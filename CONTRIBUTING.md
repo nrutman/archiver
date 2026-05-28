@@ -12,6 +12,8 @@
 
 All PRs should be squash-merged into `main`.
 
+Because production may not have Node.js, `public/build` is committed. CI checks that those built assets match the frontend source. If a frontend change updates the build output, either run `pnpm build` and commit `public/build`, or configure the `BUILT_ASSETS_COMMIT_TOKEN` repository secret so CI can push generated asset updates to same-repository PR branches. Use a fine-grained token scoped to this repository's contents, and do not allow it to bypass protected `main`.
+
 ## Setup
 
 ```bash
