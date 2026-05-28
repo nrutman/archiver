@@ -1,0 +1,10 @@
+vendor/
+node_modules/
+var/
+public/build/
+composer.lock
+pnpm-lock.yaml
+symfony.lock
+.phpunit.cache/
+coverage/
+.pi/

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: read
+
+jobs:
+    php:
+        name: PHP checks
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.3'
+                  extensions: ctype, fileinfo, iconv, intl, mbstring, openssl, zip
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Validate Composer metadata
+              run: composer validate --strict
+
+            - name: Install Composer dependencies
+              run: composer install --prefer-dist --no-progress --no-interaction
+
+            - name: Run PHP checks
+              run: composer check
+
+    frontend:
+        name: TypeScript checks
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.33.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install frontend dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Lint frontend
+              run: pnpm lint
+
+            - name: Check frontend formatting
+              run: pnpm format:check
+
+            - name: Type-check frontend
+              run: pnpm typecheck
+
+            - name: Test frontend
+              run: pnpm test
+
+            - name: Build frontend assets
+              run: pnpm build
