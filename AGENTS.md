@@ -37,6 +37,7 @@ pnpm typecheck      # TypeScript compile check
 pnpm test           # frontend tests
 pnpm build          # production frontend asset build
 make build          # production-oriented frontend build and Symfony cache warmup; override APP_ENV/APP_DEBUG only when needed
+php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, and temp storage
 ```
 
 ## Testing guidance

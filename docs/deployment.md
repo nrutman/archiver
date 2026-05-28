@@ -26,7 +26,15 @@ make build
 make build APP_ENV=staging APP_DEBUG=0
 ```
 
-The web runtime must receive the same `APP_ENV=prod`, `APP_DEBUG=0`, and production `APP_SECRET` values used during cache warmup. The PHP runtime user must be able to write to Symfony runtime directories under `var/`, including the planned archive workspace root `var/tmp/archives/`.
+The web runtime must receive the same `APP_ENV=prod`, `APP_DEBUG=0`, and production `APP_SECRET` values used during cache warmup. The PHP runtime user must be able to write to Symfony runtime directories under `var/`, including the archive workspace root `var/tmp/archives/`.
+
+After deployment, run the doctor command as the same OS user that serves PHP or owns the runtime temp directory:
+
+```bash
+sudo -u www-data php bin/console app:doctor --env=prod
+```
+
+On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`. The doctor command verifies required PHP extensions, encrypted ZIP creation, PHP upload limits, and temporary storage permissions.
 
 ## PHP values
 
@@ -66,7 +74,7 @@ A reference `.htaccess` snippet is available at [`deploy/litespeed/htaccess-lsap
 
 ## Cleanup scheduling
 
-Production deployments should schedule the purge command every 5-10 minutes:
+Production deployments should schedule the purge command every 5-10 minutes from the PHP runtime user, such as the cPanel account or `www-data`. Do not use a separate deploy user unless it is also the runtime user that owns `var/tmp/archives` workspaces. Example cron and systemd timer files are available in `deploy/cron.example` and `deploy/systemd/`.
 
 ```bash
 php bin/console app:temp:purge --env=prod

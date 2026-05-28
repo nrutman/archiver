@@ -1,0 +1,4 @@
+# Run from the PHP runtime user's crontab, e.g. the cPanel account or www-data.
+# Do not use a separate deploy user unless it is also the runtime user that owns var/tmp/archives workspaces.
+# Removes expired temporary archive workspaces every 10 minutes.
+*/10 * * * * cd /var/www/archiver && APP_ENV=prod APP_DEBUG=0 php bin/console app:temp:purge --env=prod --no-interaction

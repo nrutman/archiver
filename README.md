@@ -51,6 +51,7 @@ pnpm format:check
 pnpm typecheck
 pnpm test
 pnpm build
+php bin/console app:doctor
 ```
 
 ## Production build
@@ -108,8 +109,18 @@ All uploaded files and generated archives are temporary by design. The archive b
 4. uses `try`/`finally` cleanup around failures,
 5. provides a scheduled purge command for orphaned workspaces.
 
+Run the doctor command after deployment as the same OS user that serves PHP or owns the runtime temp directory. It verifies PHP extensions, encrypted ZIP creation, PHP upload limits, and temporary storage permissions:
+
+```bash
+sudo -u www-data php bin/console app:doctor --env=prod
+```
+
+On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`.
+
 Run the purge command every 5-10 minutes in production:
 
 ```bash
 php bin/console app:temp:purge --env=prod
 ```
+
+Example cron and systemd timer units are available under `deploy/`.

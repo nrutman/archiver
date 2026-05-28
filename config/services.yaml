@@ -30,6 +30,13 @@ services:
             $maxSingleFileBytes: '%archiver.max_single_file_bytes%'
             $maxTotalBytes: '%archiver.max_total_bytes%'
 
+    App\Command\DoctorCommand:
+        arguments:
+            $tempRoot: '%archiver.temp_root%'
+            $maxFiles: '%archiver.max_files%'
+            $maxSingleFileBytes: '%archiver.max_single_file_bytes%'
+            $maxTotalBytes: '%archiver.max_total_bytes%'
+
     App\Command\PurgeTemporaryArchivesCommand:
         arguments:
             $ttlSeconds: '%archiver.temp_ttl_seconds%'

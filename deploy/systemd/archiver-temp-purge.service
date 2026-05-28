@@ -1,0 +1,11 @@
+[Unit]
+Description=Remove expired Archiver temporary workspaces
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/archiver
+Environment=APP_ENV=prod
+Environment=APP_DEBUG=0
+ExecStart=/usr/bin/php bin/console app:temp:purge --env=prod --no-interaction
+User=www-data
+Group=www-data
