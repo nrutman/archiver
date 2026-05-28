@@ -66,13 +66,13 @@ A reference `.htaccess` snippet is available at [`deploy/litespeed/htaccess-lsap
 
 ## Cleanup scheduling
 
-The archive backend PR will add a command similar to:
+Production deployments should schedule the purge command every 5-10 minutes:
 
 ```bash
 php bin/console app:temp:purge --env=prod
 ```
 
-Production deployments should schedule that command every 5-10 minutes once it exists. The command should remove expired unlocked workspaces and skip active workspaces.
+The command removes expired unlocked workspaces and skips active workspaces. The default TTL is controlled by `ARCHIVER_TEMP_TTL_SECONDS`.
 
 ## Diagnostics
 
