@@ -1,11 +1,12 @@
 # Frontend architecture
 
-The frontend is a React and TypeScript app compiled by Vite and mounted from the Symfony Twig shell.
+The frontend is a React and TypeScript app compiled by Vite and mounted from the Symfony Twig shell. It owns selected browser `File` objects until the user submits one multipart archive request.
 
 ## Entry points
 
 - `assets/main.tsx` mounts React into `#archiver-root`.
-- `assets/ArchiveApp.tsx` contains the current product shell. Later PRs will introduce the upload workflow, password controls, and archive download behavior here or in child feature components.
+- `assets/ArchiveApp.tsx` contains the current product shell and renders the archive workflow.
+- `assets/components/ArchiveForm.tsx` owns selected files, password settings, API submission, and download triggering.
 - `assets/styles/app.css` loads Tailwind and the shadcn-compatible design tokens.
 
 ## Component conventions
