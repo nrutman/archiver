@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Archiver temporary workspace purge every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Unit=archiver-temp-purge.service
+
+[Install]
+WantedBy=timers.target
