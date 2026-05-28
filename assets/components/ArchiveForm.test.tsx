@@ -56,6 +56,7 @@ describe('ArchiveForm', () => {
         expect(screen.getByRole('button', { name: /creating archive/i })).toBeDisabled();
         expect(screen.getByLabelText(/protect zip with password/i)).toBeDisabled();
         expect(screen.getByLabelText(/archive password/i)).toBeDisabled();
+        expect(screen.getByRole('button', { name: /copy password/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /generate a new password/i })).toBeDisabled();
         expect(screen.getByRole('radio', { name: /strong encryption/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /remove secret.txt/i })).toBeDisabled();
