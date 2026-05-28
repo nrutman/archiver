@@ -12,7 +12,7 @@
 
 All PRs should be squash-merged into `main`.
 
-Because production may not have the frontend toolchain, `public/build` is committed. CI verifies that those built assets match the frontend source after rebuilding them. If a frontend change updates the build output, either rebuild assets locally and commit `public/build`, or configure the `BUILT_ASSETS_COMMIT_TOKEN` repository secret so CI can push generated asset updates to same-repository PR branches. Use a fine-grained token scoped to this repository's contents, and do not allow it to bypass protected `main`.
+Because production may not have the frontend toolchain, `public/build` is committed. CI verifies that those built assets match the frontend source after rebuilding them. If a frontend change updates the build output, either rebuild assets locally and commit `public/build`, or configure the `BUILD_ASSETS_COMMIT_TOKEN` repository secret so CI can push generated asset updates to same-repository PR branches. Use a fine-grained token scoped to this repository's contents, and do not allow it to bypass protected `main`.
 
 ## Setup
 

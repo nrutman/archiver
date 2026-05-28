@@ -32,7 +32,7 @@ make production-update
 make production-update-with-node
 ```
 
-CI verifies that committed `public/build` assets match the frontend source after rebuilding them. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise rebuild assets locally and commit `public/build` with the PR.
+CI verifies that committed `public/build` assets match the frontend source after rebuilding them. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILD_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise rebuild assets locally and commit `public/build` with the PR.
 
 The web runtime must receive the same `APP_ENV=prod`, `APP_DEBUG=0`, and production `APP_SECRET` values used during cache warmup. The PHP runtime user must be able to write to Symfony runtime directories under `var/`, including the archive workspace root `var/tmp/archives/`.
 
