@@ -1,6 +1,6 @@
 # Archiver
 
-Archiver is a small Symfony and React application for creating short-lived ZIP archives from files selected in the browser. The planned product flow lets users drop multiple files, choose password protection, and download a generated archive without keeping uploads or ZIP files longer than necessary.
+Archiver is a small Symfony and React application for creating short-lived ZIP archives from files selected in the browser. Users can drop multiple files, choose password protection, and download a generated archive without keeping uploads or ZIP files longer than necessary.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ Archiver is a small Symfony and React application for creating short-lived ZIP a
 - **Persistence:** no database. Uploads are handled in a single request, and generated archives will be written to app-owned temporary workspaces before being deleted after download.
 - **Deployment targets:** Apache with PHP-FPM and LiteSpeed Enterprise with LSAPI.
 
-The current backend includes an archive creation API and temporary workspace cleanup. The upload UI is planned for a focused follow-up PR.
+The current app includes the browser upload workflow, archive creation API, and temporary workspace cleanup.
 
 ## Requirements
 
