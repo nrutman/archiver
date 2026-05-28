@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-backend dev-frontend check php-check frontend-check test build format
+.PHONY: setup dev dev-backend dev-frontend check php-check frontend-check test build production-update format
 
 APP_ENV ?= prod
 APP_DEBUG ?= 0
@@ -37,6 +37,11 @@ test:
 build:
 	pnpm build
 	APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG) php bin/console cache:clear
+
+production-update:
+	composer install --no-dev --optimize-autoloader
+	pnpm install --frozen-lockfile
+	$(MAKE) build APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG)
 
 format:
 	composer format

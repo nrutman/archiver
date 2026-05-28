@@ -4,20 +4,27 @@ Archiver is designed for traditional PHP hosting. The web server document root m
 
 ## Shared production steps
 
-Configure production environment values through the host, an untracked `.env.local`, or Symfony's optimized environment dump:
-
-```bash
-APP_ENV=prod
-APP_DEBUG=0
-APP_SECRET=<generate-a-unique-secret>
-```
-
-Then install dependencies, build assets, and warm the production cache:
+Configure production environment values through the host, an untracked `.env.local`, or Symfony's optimized environment dump. On a fresh checkout, install Composer dependencies first so Symfony's console is available:
 
 ```bash
 composer install --no-dev --optimize-autoloader
+php bin/console app:env:generate-local --app-env=prod --default-uri=https://your-domain.example
+```
+
+The command generates a fresh `APP_SECRET` and refuses to overwrite an existing `.env.local` unless you pass `--force`.
+
+Then install frontend dependencies, build assets, and warm the production cache:
+
+```bash
 pnpm install --frozen-lockfile
 make build
+```
+
+After pulling future changes on a production server, run those install/build steps again so Composer packages, frontend packages, built assets, and Symfony's cache all match the new commit. The shorthand target is:
+
+```bash
+git pull origin main
+make production-update
 ```
 
 `make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:

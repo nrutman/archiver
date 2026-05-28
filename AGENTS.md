@@ -38,6 +38,7 @@ pnpm test           # frontend tests
 pnpm build          # production frontend asset build
 make build          # production-oriented frontend build and Symfony cache warmup; override APP_ENV/APP_DEBUG only when needed
 php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, and temp storage
+php bin/console app:env:generate-local --app-env=prod    # generate an untracked .env.local with a fresh APP_SECRET
 ```
 
 ## Testing guidance

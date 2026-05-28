@@ -5,6 +5,7 @@ The Symfony backend owns HTTP routing, request validation, archive generation, t
 ## Current entry points
 
 - `App\Controller\HomeController` renders the Twig shell that mounts the React app.
+- `app:env:generate-local` generates an untracked `.env.local` with a fresh `APP_SECRET` and runtime defaults.
 
 ## Planned archive responsibilities
 
