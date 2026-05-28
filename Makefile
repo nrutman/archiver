@@ -1,5 +1,8 @@
 .PHONY: setup dev dev-backend dev-frontend check php-check frontend-check test build format
 
+APP_ENV ?= prod
+APP_DEBUG ?= 0
+
 setup:
 	composer install
 	pnpm install
@@ -33,7 +36,7 @@ test:
 
 build:
 	pnpm build
-	APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
+	APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG) php bin/console cache:clear
 
 format:
 	composer format

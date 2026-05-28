@@ -35,7 +35,8 @@ pnpm lint           # frontend lint
 pnpm format:check   # frontend formatting check
 pnpm typecheck      # TypeScript compile check
 pnpm test           # frontend tests
-pnpm build          # production frontend build
+pnpm build          # production frontend asset build
+make build          # production-oriented frontend build and Symfony cache warmup; override APP_ENV/APP_DEBUG only when needed
 ```
 
 ## Testing guidance

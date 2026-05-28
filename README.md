@@ -68,8 +68,13 @@ Then build and warm the app:
 ```bash
 composer install --no-dev --optimize-autoloader
 pnpm install --frozen-lockfile
-pnpm build
-APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
+make build
+```
+
+`make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:
+
+```bash
+make build APP_ENV=staging APP_DEBUG=0
 ```
 
 Point the web server document root at `public/` and make sure the web runtime also receives `APP_ENV=prod`, `APP_DEBUG=0`, and the production `APP_SECRET`.

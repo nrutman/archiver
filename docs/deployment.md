@@ -17,8 +17,13 @@ Then install dependencies, build assets, and warm the production cache:
 ```bash
 composer install --no-dev --optimize-autoloader
 pnpm install --frozen-lockfile
-pnpm build
-APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
+make build
+```
+
+`make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:
+
+```bash
+make build APP_ENV=staging APP_DEBUG=0
 ```
 
 The web runtime must receive the same `APP_ENV=prod`, `APP_DEBUG=0`, and production `APP_SECRET` values used during cache warmup. The PHP runtime user must be able to write to Symfony runtime directories under `var/`, including the planned archive workspace root `var/tmp/archives/`.
