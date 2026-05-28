@@ -1,0 +1,104 @@
+name: Update committed frontend assets
+
+on:
+    pull_request_target:
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - ready_for_review
+
+permissions:
+    contents: read
+
+jobs:
+    build-assets:
+        name: Build public/build artifact
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        runs-on: ubuntu-latest
+        outputs:
+            changed: ${{ steps.built-assets.outputs.changed }}
+        steps:
+            - name: Checkout PR head
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.pull_request.head.sha }}
+                  persist-credentials: false
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.33.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install frontend dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build frontend assets
+              run: pnpm build
+
+            - name: Detect built asset changes
+              id: built-assets
+              run: |
+                  if [ -n "$(git status --porcelain -- public/build)" ]; then
+                      echo "changed=true" >> "$GITHUB_OUTPUT"
+                      git status --short -- public/build
+                  else
+                      echo "changed=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Upload built assets
+              if: steps.built-assets.outputs.changed == 'true'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: public-build
+                  path: public/build
+                  include-hidden-files: true
+                  if-no-files-found: error
+
+    commit-assets:
+        name: Commit public/build artifact
+        needs: build-assets
+        if: needs.build-assets.outputs.changed == 'true'
+        runs-on: ubuntu-latest
+        env:
+            HAS_COMMIT_TOKEN: ${{ secrets.BUILT_ASSETS_COMMIT_TOKEN != '' }}
+            HEAD_REF: ${{ github.event.pull_request.head.ref }}
+            HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+            REPOSITORY: ${{ github.repository }}
+        steps:
+            - name: Explain missing commit token
+              if: env.HAS_COMMIT_TOKEN != 'true'
+              run: |
+                  echo "::error::public/build is out of date, but BUILT_ASSETS_COMMIT_TOKEN is not configured. Set that repository secret with a fine-grained token that can push to same-repository PR branches, or run pnpm build and commit public/build manually."
+                  exit 1
+
+            - name: Checkout PR branch
+              if: env.HAS_COMMIT_TOKEN == 'true'
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ env.HEAD_SHA }}
+                  persist-credentials: false
+
+            - name: Download built assets
+              if: env.HAS_COMMIT_TOKEN == 'true'
+              uses: actions/download-artifact@v4
+              with:
+                  name: public-build
+                  path: public/build
+
+            - name: Commit built assets
+              if: env.HAS_COMMIT_TOKEN == 'true'
+              env:
+                  BUILT_ASSETS_COMMIT_TOKEN: ${{ secrets.BUILT_ASSETS_COMMIT_TOKEN }}
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add public/build
+                  git -c core.hooksPath=/dev/null commit --no-verify -m "Update built frontend assets"
+                  git -c core.hooksPath=/dev/null push "https://x-access-token:${BUILT_ASSETS_COMMIT_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"

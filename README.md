@@ -65,19 +65,26 @@ php bin/console app:env:generate-local --app-env=prod --default-uri=https://your
 
 The command generates a fresh `APP_SECRET` and refuses to overwrite an existing `.env.local` unless you pass `--force`.
 
-Then install frontend dependencies, build assets, and warm the app:
+Then use the committed `public/build` assets from git and warm the PHP side:
 
 ```bash
-pnpm install --frozen-lockfile
-make build
+make production-update
 ```
 
-After pulling future changes on a production server, run the same dependency install and build steps. The shorthand target is:
+After pulling future changes on production, run the same no-Node update command:
 
 ```bash
 git pull origin main
 make production-update
 ```
+
+`make production-update` intentionally does not run `pnpm`. If you are on a machine with Node.js and want to rebuild assets directly, use:
+
+```bash
+make production-update-with-node
+```
+
+CI verifies that committed `public/build` assets match the frontend source. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise run `pnpm build` locally and commit `public/build` with the PR.
 
 `make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:
 

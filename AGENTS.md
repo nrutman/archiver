@@ -20,6 +20,7 @@ All PRs should be squash-merged into `main`.
 - Symfony 7.4 / PHP 8.3+ backend.
 - React / TypeScript / Vite frontend.
 - Tailwind CSS with shadcn-compatible UI primitives.
+- Built frontend assets under `public/build` are committed so production hosts do not need Node.js.
 - No database is planned for the core flow.
 - Files are temporary. Uploaded files should stay in PHP request temp storage where possible; generated ZIP files should live in short-lived app workspaces and be cleaned up aggressively.
 
@@ -37,6 +38,8 @@ pnpm typecheck      # TypeScript compile check
 pnpm test           # frontend tests
 pnpm build          # production frontend asset build
 make build          # production-oriented frontend build and Symfony cache warmup; override APP_ENV/APP_DEBUG only when needed
+make production-update    # production update path using committed public/build assets; does not require Node.js or pnpm
+make production-update-with-node    # production-style update that also installs/rebuilds frontend assets locally
 php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, and temp storage
 php bin/console app:env:generate-local --app-env=prod    # generate an untracked .env.local with a fresh APP_SECRET
 ```
