@@ -1,4 +1,5 @@
-import { RefreshCw, ShieldCheck } from 'lucide-react';
+import { Check, Copy, RefreshCw, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import type { EncryptionMode } from '@/lib/archiveApi';
@@ -27,6 +28,22 @@ export function PasswordControls({
     onPasswordEnabledChange,
     onRegeneratePassword,
 }: PasswordControlsProps) {
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+    async function copyPassword(): Promise<void> {
+        try {
+            await navigator.clipboard.writeText(password);
+            setCopyStatus('copied');
+        } catch {
+            setCopyStatus('failed');
+        }
+    }
+
+    function updatePassword(value: string): void {
+        setCopyStatus('idle');
+        onPasswordChange(value);
+    }
+
     return (
         <section
             className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm"
@@ -59,31 +76,57 @@ export function PasswordControls({
                 <label className="block text-sm font-medium" htmlFor="archive-password">
                     Archive password
                 </label>
-                <div className="flex gap-2">
+                <div className="flex">
                     <input
-                        className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-10 min-w-0 flex-1 rounded-md rounded-r-none border border-input bg-background px-3 py-2 font-mono text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={disabled || !passwordEnabled}
                         id="archive-password"
-                        onChange={(event) => onPasswordChange(event.currentTarget.value)}
+                        onChange={(event) => updatePassword(event.currentTarget.value)}
                         type="text"
                         value={password}
                     />
                     <Button
+                        aria-label="Copy password"
+                        className="h-10 rounded-none border-l-0 px-3"
+                        disabled={disabled || !passwordEnabled || password.length === 0}
+                        onClick={() => void copyPassword()}
+                        title="Copy password"
+                        type="button"
+                        variant="outline"
+                    >
+                        {copyStatus === 'copied' ? (
+                            <Check className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                            <Copy className="h-4 w-4" aria-hidden="true" />
+                        )}
+                    </Button>
+                    <Button
                         aria-label="Generate a new password"
+                        className="h-10 rounded-l-none border-l-0 px-3"
                         disabled={disabled || !passwordEnabled}
-                        onClick={onRegeneratePassword}
+                        onClick={() => {
+                            setCopyStatus('idle');
+                            onRegeneratePassword();
+                        }}
+                        title="Generate a new password"
                         type="button"
                         variant="outline"
                     >
                         <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     </Button>
                 </div>
+                <p className="min-h-5 text-xs text-muted-foreground" role="status">
+                    {copyStatus === 'copied' ? 'Password copied to clipboard.' : null}
+                    {copyStatus === 'failed'
+                        ? 'Could not copy password. Select the text and copy it manually.'
+                        : null}
+                </p>
             </div>
 
             {passwordEnabled ? (
                 <fieldset className="space-y-3">
                     <legend className="text-sm font-medium">Encryption</legend>
-                    <label className="flex gap-3 rounded-xl border p-3 text-sm">
+                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
                         <input
                             checked={encryptionMode === 'aes256'}
                             className="mt-1"
@@ -99,7 +142,7 @@ export function PasswordControls({
                             </span>
                         </span>
                     </label>
-                    <label className="flex gap-3 rounded-xl border p-3 text-sm">
+                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
                         <input
                             checked={encryptionMode === 'zipcrypto'}
                             className="mt-1"

@@ -26,7 +26,7 @@ export function FileDropzone({ disabled = false, onFilesAdded }: FileDropzonePro
     return (
         <label
             className={cn(
-                'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-card px-6 py-10 text-center shadow-sm transition-colors focus-within:border-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+                'flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-card px-6 py-14 text-center shadow-sm transition-colors focus-within:border-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                 isDragging
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/60',
