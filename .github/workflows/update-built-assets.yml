@@ -52,6 +52,10 @@ jobs:
                       echo "changed=false" >> "$GITHUB_OUTPUT"
                   fi
 
+            - name: Confirm committed assets are current
+              if: steps.built-assets.outputs.changed != 'true'
+              run: echo "public/build already matches the build output; no asset commit is needed."
+
             - name: Upload built assets
               if: steps.built-assets.outputs.changed == 'true'
               uses: actions/upload-artifact@v4
@@ -67,7 +71,7 @@ jobs:
         if: needs.build-assets.outputs.changed == 'true'
         runs-on: ubuntu-latest
         env:
-            HAS_COMMIT_TOKEN: ${{ secrets.BUILT_ASSETS_COMMIT_TOKEN != '' }}
+            HAS_COMMIT_TOKEN: ${{ secrets.BUILD_ASSETS_COMMIT_TOKEN != '' }}
             HEAD_REF: ${{ github.event.pull_request.head.ref }}
             HEAD_SHA: ${{ github.event.pull_request.head.sha }}
             REPOSITORY: ${{ github.repository }}
@@ -75,7 +79,7 @@ jobs:
             - name: Explain missing commit token
               if: env.HAS_COMMIT_TOKEN != 'true'
               run: |
-                  echo "::error::public/build is out of date, but BUILT_ASSETS_COMMIT_TOKEN is not configured. Set that repository secret with a fine-grained token that can push to same-repository PR branches, or run pnpm build and commit public/build manually."
+                  echo "::error::public/build is out of date, but BUILD_ASSETS_COMMIT_TOKEN is not configured. Set that repository secret with a fine-grained token that can push to same-repository PR branches, or rebuild assets locally and commit public/build manually."
                   exit 1
 
             - name: Checkout PR branch
@@ -95,10 +99,10 @@ jobs:
             - name: Commit built assets
               if: env.HAS_COMMIT_TOKEN == 'true'
               env:
-                  BUILT_ASSETS_COMMIT_TOKEN: ${{ secrets.BUILT_ASSETS_COMMIT_TOKEN }}
+                  BUILD_ASSETS_COMMIT_TOKEN: ${{ secrets.BUILD_ASSETS_COMMIT_TOKEN }}
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   git add public/build
                   git -c core.hooksPath=/dev/null commit --no-verify -m "Update built frontend assets"
-                  git -c core.hooksPath=/dev/null push "https://x-access-token:${BUILT_ASSETS_COMMIT_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+                  git -c core.hooksPath=/dev/null push "https://x-access-token:${BUILD_ASSETS_COMMIT_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"

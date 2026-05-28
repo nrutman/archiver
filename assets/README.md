@@ -17,11 +17,8 @@ Shared UI primitives live under `assets/components/ui`. The structure is compati
 
 ## Checks
 
-Run frontend checks with:
+Run frontend checks and verify committed build assets with:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+make frontend-check
 ```

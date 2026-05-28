@@ -27,6 +27,31 @@ describe('ArchiveForm', () => {
         expect(screen.getByText('two.txt')).toBeInTheDocument();
     });
 
+    it('adds files when crypto.randomUUID is unavailable', async () => {
+        const user = userEvent.setup();
+        const originalRandomUuid = globalThis.crypto.randomUUID.bind(globalThis.crypto);
+        Object.defineProperty(globalThis.crypto, 'randomUUID', {
+            configurable: true,
+            value: undefined,
+        });
+
+        try {
+            render(<ArchiveForm />);
+
+            await user.upload(
+                screen.getByLabelText(/drop files here/i),
+                new File(['one'], 'one.txt'),
+            );
+
+            expect(screen.getByText('one.txt')).toBeInTheDocument();
+        } finally {
+            Object.defineProperty(globalThis.crypto, 'randomUUID', {
+                configurable: true,
+                value: originalRandomUuid,
+            });
+        }
+    });
+
     it('disables mutable controls while the archive is being created', async () => {
         const user = userEvent.setup();
         let resolveFetch: (response: Response) => void = () => undefined;

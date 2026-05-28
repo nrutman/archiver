@@ -1,0 +1,63 @@
+# Archiver front-controller rules for Apache and LiteSpeed.
+# Keep the web server document root pointed at this public/ directory.
+
+DirectoryIndex index.php
+
+# Some hosts emit experimental Permissions-Policy values such as
+# browsing-topics, which causes noisy browser console warnings. Replace them
+# with a small conservative policy when mod_headers is available.
+<IfModule mod_headers.c>
+    Header unset Permissions-Policy
+    Header always unset Permissions-Policy
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Preserve Authorization headers for Symfony if a future endpoint needs them.
+    RewriteCond %{HTTP:Authorization} .+
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%0]
+
+    # Do not serve dotfiles or files inside dot-directories, except .well-known.
+    RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F]
+
+    # Let Apache/LiteSpeed serve real files, including built assets.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Forward the site root directly to Symfony's front controller.
+    RewriteRule ^$ index.php [QSA,L]
+
+    # Route all other requests through Symfony's front controller.
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        RedirectMatch 307 ^/$ /index.php/
+    </IfModule>
+</IfModule>
+
+# LiteSpeed LSAPI can accept PHP values from .htaccess. Apache PHP-FPM usually
+# cannot, so keep these guarded by LiteSpeed's module check. Prefer cPanel
+# MultiPHP INI Editor when available.
+<IfModule lsapi_module>
+    php_value upload_max_filesize 100M
+    php_value post_max_size 220M
+    php_value max_file_uploads 30
+    php_value max_input_time 300
+    php_value max_execution_time 300
+    php_value memory_limit 512M
+</IfModule>
+
+# Fallback protection for hosts where mod_rewrite is unavailable.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

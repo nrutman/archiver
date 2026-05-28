@@ -19,7 +19,7 @@ Production servers only need the PHP runtime because built frontend assets are c
 - Composer 2+
 - PHP extensions: `ctype`, `fileinfo`, `iconv`, `intl`, `mbstring`, `openssl`, and `zip`
 
-Development machines and CI also need Node.js 22+ and pnpm 10+ to run, test, and rebuild the frontend.
+Development machines and CI also need the Node-based frontend toolchain to run, test, and rebuild the frontend; day-to-day commands are wrapped by `make`.
 
 ## Local setup
 
@@ -38,21 +38,23 @@ The backend runs at `http://127.0.0.1:8000` and Vite runs at `http://127.0.0.1:5
 
 ## Checks
 
-Run all checks with:
+Run production-safe PHP checks and committed asset verification with:
 
 ```bash
 make check
+```
+
+CI runs the full frontend lint/type/test/build suite. On a development machine with the frontend toolchain installed, you can run those checks locally with:
+
+```bash
+make frontend-check
 ```
 
 Useful targeted commands:
 
 ```bash
 composer check
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm test
-pnpm build
+make check-built-assets
 php bin/console app:doctor
 ```
 
@@ -80,21 +82,15 @@ git pull origin main
 make production-update
 ```
 
-`make production-update` intentionally does not run `pnpm`. If you are on a machine with Node.js and want to rebuild assets directly, use:
+`make production-update` intentionally does not run frontend package-manager commands. If you are on a development or CI machine and want to rebuild assets directly, use:
 
 ```bash
 make production-update-with-node
 ```
 
-`make check` and CI verify that committed `public/build` assets match the frontend source. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise run `pnpm build` locally and commit `public/build` with the PR.
+CI verifies that committed `public/build` assets match the frontend source after rebuilding them. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILD_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise rebuild assets locally and commit `public/build` with the PR.
 
-On Node-capable machines, `make build` rebuilds frontend assets and clears the Symfony cache with `APP_ENV=prod` and `APP_DEBUG=0` by default. Override those values only for unusual environment-specific builds:
-
-```bash
-make build APP_ENV=staging APP_DEBUG=0
-```
-
-Point the web server document root at `public/` and make sure the web runtime also receives `APP_ENV=prod`, `APP_DEBUG=0`, and the production `APP_SECRET`.
+Point the web server document root at `public/` and make sure the web runtime also receives `APP_ENV=prod`, `APP_DEBUG=0`, and the production `APP_SECRET`. The committed `public/.htaccess` handles front-controller routing for Apache and LiteSpeed hosts that honor `.htaccess` files.
 
 ## Upload/runtime settings
 

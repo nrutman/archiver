@@ -30,15 +30,12 @@ All PRs should be squash-merged into `main`.
 make setup          # install PHP and frontend dependencies
 make dev-backend    # run Symfony through PHP's local server
 make dev-frontend   # run Vite
-make check          # run frontend and PHP checks
+make check          # run PHP checks and verify committed public/build files without requiring the frontend toolchain
 composer check      # PHP validation, linting, formatting, static analysis, tests
-pnpm lint           # frontend lint
-pnpm format:check   # frontend formatting check
-pnpm typecheck      # TypeScript compile check
-pnpm test           # frontend tests
-pnpm build          # production frontend asset build
-make build          # production-oriented frontend build and Symfony cache warmup; override APP_ENV/APP_DEBUG only when needed
-make production-update    # production update path using committed public/build assets; does not require Node.js or pnpm
+make frontend-check # frontend lint, formatting, type-check, tests, build, and committed asset verification; requires the frontend toolchain
+make check-built-assets # verify public/build matches the current frontend build
+make build          # rebuild frontend assets and warm Symfony cache; use only on machines with the frontend toolchain
+make production-update    # production update path using committed public/build assets; does not require the frontend toolchain
 make production-update-with-node    # production-style update that also installs/rebuilds frontend assets locally
 php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, and temp storage
 php bin/console app:env:generate-local --app-env=prod    # generate an untracked .env.local with a fresh APP_SECRET
