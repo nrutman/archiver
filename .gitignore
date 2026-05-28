@@ -10,6 +10,7 @@
 ###< symfony/framework-bundle ###
 
 /node_modules/
+/.vite/
 /public/build/
 /coverage/
 /.phpunit.cache/

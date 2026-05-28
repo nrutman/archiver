@@ -7,6 +7,11 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    archiver.max_files: '%env(int:ARCHIVER_MAX_FILES)%'
+    archiver.max_single_file_bytes: '%env(int:ARCHIVER_MAX_SINGLE_FILE_BYTES)%'
+    archiver.max_total_bytes: '%env(int:ARCHIVER_MAX_TOTAL_BYTES)%'
+    archiver.temp_ttl_seconds: '%env(int:ARCHIVER_TEMP_TTL_SECONDS)%'
+    archiver.temp_root: '%kernel.project_dir%/var/tmp/archives'
 
 services:
     # default configuration for services in *this* file
@@ -18,6 +23,24 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+
+    App\Archive\ArchiveLimits:
+        arguments:
+            $maxFiles: '%archiver.max_files%'
+            $maxSingleFileBytes: '%archiver.max_single_file_bytes%'
+            $maxTotalBytes: '%archiver.max_total_bytes%'
+
+    App\Command\PurgeTemporaryArchivesCommand:
+        arguments:
+            $ttlSeconds: '%archiver.temp_ttl_seconds%'
+
+    App\TemporaryStorage\TemporaryWorkspaceFactory:
+        arguments:
+            $rootDirectory: '%archiver.temp_root%'
+
+    App\TemporaryStorage\TemporaryWorkspacePurger:
+        arguments:
+            $rootDirectory: '%archiver.temp_root%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

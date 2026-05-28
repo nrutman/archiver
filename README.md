@@ -9,7 +9,7 @@ Archiver is a small Symfony and React application for creating short-lived ZIP a
 - **Persistence:** no database. Uploads are handled in a single request, and generated archives will be written to app-owned temporary workspaces before being deleted after download.
 - **Deployment targets:** Apache with PHP-FPM and LiteSpeed Enterprise with LSAPI.
 
-The first implementation PR scaffolds the application shell and CI baseline. Archive creation, temporary storage cleanup, and the upload UI are intentionally left for focused follow-up PRs.
+The current backend includes an archive creation API and temporary workspace cleanup. The upload UI is planned for a focused follow-up PR.
 
 ## Requirements
 
@@ -100,12 +100,16 @@ See [`docs/deployment.md`](docs/deployment.md) for Apache PHP-FPM and LiteSpeed 
 
 ## Temporary files
 
-All uploaded files and generated archives are temporary by design. The archive backend will use a layered cleanup strategy:
+All uploaded files and generated archives are temporary by design. The archive backend uses a layered cleanup strategy:
 
-1. avoid copying uploaded files outside PHP's request temp storage unless needed,
-2. create generated ZIP files in private app workspaces under `var/tmp/archives/`,
-3. delete the ZIP after the response is sent,
-4. use `try`/`finally` cleanup around failures,
-5. provide a scheduled purge command for orphaned workspaces.
+1. avoids copying uploaded files outside PHP's request temp storage unless needed,
+2. creates generated ZIP files in private app workspaces under `var/tmp/archives/`,
+3. deletes the workspace after the response is streamed,
+4. uses `try`/`finally` cleanup around failures,
+5. provides a scheduled purge command for orphaned workspaces.
 
-The purge command is planned for the archive backend PR.
+Run the purge command every 5-10 minutes in production:
+
+```bash
+php bin/console app:temp:purge --env=prod
+```
