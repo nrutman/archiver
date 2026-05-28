@@ -56,20 +56,27 @@ php bin/console app:doctor
 
 ## Production build
 
-Before serving the app, configure production environment values through the host, an untracked `.env.local`, or Symfony's optimized environment dump:
-
-```bash
-APP_ENV=prod
-APP_DEBUG=0
-APP_SECRET=<generate-a-unique-secret>
-```
-
-Then build and warm the app:
+Before serving the app, configure production environment values through the host, an untracked `.env.local`, or Symfony's optimized environment dump. On a fresh checkout, install Composer dependencies first so Symfony's console is available:
 
 ```bash
 composer install --no-dev --optimize-autoloader
+php bin/console app:env:generate-local --app-env=prod --default-uri=https://your-domain.example
+```
+
+The command generates a fresh `APP_SECRET` and refuses to overwrite an existing `.env.local` unless you pass `--force`.
+
+Then install frontend dependencies, build assets, and warm the app:
+
+```bash
 pnpm install --frozen-lockfile
 make build
+```
+
+After pulling future changes on a production server, run the same dependency install and build steps. The shorthand target is:
+
+```bash
+git pull origin main
+make production-update
 ```
 
 `make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:
