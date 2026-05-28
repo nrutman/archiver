@@ -50,11 +50,14 @@ export function downloadArchive(download: ArchiveDownload): void {
     const url = URL.createObjectURL(download.blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = download.filename;
+    anchor.download = zipFilename(download.filename);
     document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    try {
+        anchor.click();
+    } finally {
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    }
 }
 
 async function errorMessageFromResponse(response: Response): Promise<string> {
@@ -88,5 +91,13 @@ function filenameFromDisposition(disposition: string | null): string {
     }
 
     const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition);
-    return match?.[1] ? decodeURIComponent(match[1]) : 'archive.zip';
+    return zipFilename(match?.[1] ? decodeURIComponent(match[1]) : 'archive.zip');
+}
+
+function zipFilename(filename: string): string {
+    const trimmedFilename = filename.trim() || 'archive.zip';
+
+    return trimmedFilename.toLowerCase().endsWith('.zip')
+        ? trimmedFilename
+        : `${trimmedFilename}.zip`;
 }
