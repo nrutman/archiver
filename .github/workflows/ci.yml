@@ -71,9 +71,4 @@ jobs:
               run: pnpm build
 
             - name: Check committed frontend assets
-              run: |
-                  if [ -n "$(git status --porcelain -- public/build)" ]; then
-                      git status --short -- public/build
-                      echo "::error::public/build is out of date. Run pnpm build and commit public/build, or configure BUILT_ASSETS_COMMIT_TOKEN so CI can update same-repository PR branches."
-                      exit 1
-                  fi
+              run: make check-built-assets

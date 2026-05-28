@@ -84,7 +84,7 @@ make production-update
 make production-update-with-node
 ```
 
-CI verifies that committed `public/build` assets match the frontend source. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise run `pnpm build` locally and commit `public/build` with the PR.
+`make check` and CI verify that committed `public/build` assets match the frontend source. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise run `pnpm build` locally and commit `public/build` with the PR.
 
 `make build` defaults to `APP_ENV=prod` and `APP_DEBUG=0`. Override those values only for unusual environment-specific builds:
 
