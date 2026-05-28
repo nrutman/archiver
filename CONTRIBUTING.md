@@ -12,7 +12,7 @@
 
 All PRs should be squash-merged into `main`.
 
-Because production may not have Node.js, `public/build` is committed. `make check` and CI verify that those built assets match the frontend source. If a frontend change updates the build output, either run `pnpm build` and commit `public/build`, or configure the `BUILT_ASSETS_COMMIT_TOKEN` repository secret so CI can push generated asset updates to same-repository PR branches. Use a fine-grained token scoped to this repository's contents, and do not allow it to bypass protected `main`.
+Because production may not have the frontend toolchain, `public/build` is committed. CI verifies that those built assets match the frontend source after rebuilding them. If a frontend change updates the build output, either rebuild assets locally and commit `public/build`, or configure the `BUILT_ASSETS_COMMIT_TOKEN` repository secret so CI can push generated asset updates to same-repository PR branches. Use a fine-grained token scoped to this repository's contents, and do not allow it to bypass protected `main`.
 
 ## Setup
 
@@ -35,15 +35,17 @@ make dev-frontend
 make check
 ```
 
+CI runs the full frontend lint/type/test/build suite. On a development machine with the frontend toolchain installed, run those checks locally with:
+
+```bash
+make frontend-check
+```
+
 Or run targeted checks:
 
 ```bash
 composer check
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm test
-pnpm build
+make check-built-assets
 ```
 
 ## Testing expectations

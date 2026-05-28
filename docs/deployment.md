@@ -26,19 +26,13 @@ git pull origin main
 make production-update
 ```
 
-`make production-update` intentionally does not run `pnpm`. If you are on a machine with Node.js and want to rebuild assets directly, use:
+`make production-update` intentionally does not run frontend package-manager commands. If you are on a development or CI machine and want to rebuild assets directly, use:
 
 ```bash
 make production-update-with-node
 ```
 
-`make check` and CI verify that committed `public/build` assets match the frontend source. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise run `pnpm build` locally and commit `public/build` with the PR.
-
-On Node-capable machines, `make build` rebuilds frontend assets and clears the Symfony cache with `APP_ENV=prod` and `APP_DEBUG=0` by default. Override those values only for unusual environment-specific builds:
-
-```bash
-make build APP_ENV=staging APP_DEBUG=0
-```
+CI verifies that committed `public/build` assets match the frontend source after rebuilding them. Same-repository PR branches can also have CI commit built asset changes automatically when the `BUILT_ASSETS_COMMIT_TOKEN` repository secret is configured. Use a fine-grained token scoped to this repository's contents and do not allow it to bypass protected `main`; otherwise rebuild assets locally and commit `public/build` with the PR.
 
 The web runtime must receive the same `APP_ENV=prod`, `APP_DEBUG=0`, and production `APP_SECRET` values used during cache warmup. The PHP runtime user must be able to write to Symfony runtime directories under `var/`, including the archive workspace root `var/tmp/archives/`.
 
@@ -67,24 +61,14 @@ memory_limit = 512M
 
 Application validation will enforce the product limits independently. PHP and web-server limits must be high enough for the request to reach Symfony.
 
-## Apache with PHP-FPM
+## Apache and LiteSpeed routing
 
-- Set `DocumentRoot` to `/path/to/archiver/public`.
-- Route non-file requests to `index.php`.
-- Configure request body limits at Apache/PHP-FPM/PHP levels.
-- If using manual per-directory PHP overrides, PHP-FPM typically reads `.user.ini`. Prefer the host control panel when available.
-
-A reference virtual host is available at [`deploy/apache-fpm/vhost.example.conf`](../deploy/apache-fpm/vhost.example.conf).
-
-## LiteSpeed Enterprise with LSAPI
-
-- Set the virtual host document root to `/path/to/archiver/public`.
-- Ensure rewrite rules send non-file requests to `index.php`.
-- Use cPanel MultiPHP INI Editor for upload/time/memory values when available.
-- If configuring manually, follow the host's LSAPI guidance. LiteSpeed/cPanel commonly applies supported PHP values through `.htaccess` or server-managed LSAPI configuration.
-- Restart LSAPI workers if required by the host after changing PHP values.
-
-A reference `.htaccess` snippet is available at [`deploy/litespeed/htaccess-lsapi.example`](../deploy/litespeed/htaccess-lsapi.example).
+- Set the web document root to `/path/to/archiver/public`.
+- Ensure the host honors the committed [`public/.htaccess`](../public/.htaccess). For Apache virtual hosts, this usually means enabling `AllowOverride` for the `public/` directory. For shared hosting, this is often already enabled.
+- The shared `.htaccess` routes `/` and non-file URLs through `index.php`, serves committed `public/build` assets directly, and blocks dotfiles except `.well-known`.
+- Configure request body limits at the server/PHP handler/PHP levels.
+- Apache PHP-FPM does not usually read `php_value` directives from `.htaccess`; use MultiPHP INI Editor or `.user.ini` for PHP upload/time/memory values.
+- LiteSpeed LSAPI can apply the guarded `php_value` directives in `public/.htaccess` when manual LSAPI configuration is needed. Restart LSAPI workers if required by the host after changing PHP values.
 
 ## Cleanup scheduling
 

@@ -27,7 +27,7 @@ export function ArchiveForm() {
         setFiles((currentFiles) => [
             ...currentFiles,
             ...newFiles.map((file) => ({
-                id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+                id: createSelectedFileId(file),
                 file,
             })),
         ]);
@@ -110,4 +110,13 @@ export function ArchiveForm() {
             </aside>
         </div>
     );
+}
+
+function createSelectedFileId(file: File): string {
+    const randomValue =
+        typeof globalThis.crypto?.randomUUID === 'function'
+            ? globalThis.crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return `${file.name}-${file.size}-${file.lastModified}-${randomValue}`;
 }

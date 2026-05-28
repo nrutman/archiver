@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-backend dev-frontend check php-check frontend-check check-built-assets test build production-update production-update-with-node format
+.PHONY: setup dev dev-backend dev-frontend check dev-check php-check frontend-check check-built-assets test build production-update production-update-with-node format
 
 APP_ENV ?= prod
 APP_DEBUG ?= 0
@@ -18,7 +18,9 @@ dev-backend:
 dev-frontend:
 	pnpm dev
 
-check: frontend-check php-check
+check: php-check check-built-assets
+
+dev-check: frontend-check php-check
 
 php-check:
 	composer check
@@ -34,7 +36,7 @@ frontend-check:
 check-built-assets:
 	@if ! git diff --quiet -- public/build || [ -n "$$(git ls-files --others --exclude-standard public/build)" ]; then \
 		git status --short -- public/build; \
-		echo "public/build is out of date. Run pnpm build and commit the generated assets."; \
+		echo "public/build is out of date. Rebuild frontend assets and commit the generated files."; \
 		exit 1; \
 	fi
 
