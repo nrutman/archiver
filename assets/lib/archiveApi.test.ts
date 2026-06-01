@@ -27,6 +27,39 @@ describe('archiveApi', () => {
         expect(archive.filename).toBe('archive-test.zip');
     });
 
+    it('throws the server-provided error message on a 400 response', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+            new Response(JSON.stringify({ error: { message: 'Add at least one file.' } }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+
+        await expect(
+            createArchive({
+                encryptionMode: 'aes256',
+                files: [new File(['secret'], 'secret.txt')],
+                password: 'password',
+                passwordEnabled: true,
+            }),
+        ).rejects.toThrow('Add at least one file.');
+    });
+
+    it('falls back to a generic message when a 400 body is missing or malformed', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+            new Response('<html>oops</html>', { status: 400 }),
+        );
+
+        await expect(
+            createArchive({
+                encryptionMode: 'aes256',
+                files: [new File(['secret'], 'secret.txt')],
+                password: 'password',
+                passwordEnabled: true,
+            }),
+        ).rejects.toThrow('Could not create the archive. Please try again.');
+    });
+
     it('throws a RateLimitError with the server-provided retry hint on HTTP 429', async () => {
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(
             new Response(

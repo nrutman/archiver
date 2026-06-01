@@ -83,6 +83,7 @@ export function ArchiveForm() {
                 setRateLimit({
                     message: caughtError.message,
                     secondsRemaining: caughtError.retryAfterSeconds,
+                    initialSecondsRemaining: caughtError.retryAfterSeconds,
                 });
             } else {
                 setError(
@@ -137,11 +138,15 @@ export function ArchiveForm() {
                   the rate-limit message as a text-content change on this
                   always-mounted node, which is more reliable across
                   assistive technologies than announcing a freshly-inserted
-                  role="alert" subtree. The visible banner below carries
-                  the same message plus a sighted-only countdown.
+                  role="alert" subtree. The announced text includes the
+                  initial wait duration (captured once when the 429 lands)
+                  so AT users get actionable timing info — the ticking
+                  countdown in the visible banner is sighted-only.
                 */}
                 <p className="sr-only" role="status">
-                    {isRateLimited && rateLimit ? rateLimit.message : ''}
+                    {isRateLimited && rateLimit
+                        ? `${rateLimit.message} You can try again in about ${rateLimit.initialSecondsRemaining} seconds.`
+                        : ''}
                 </p>
 
                 {isRateLimited && rateLimit ? (
@@ -173,7 +178,14 @@ export function ArchiveForm() {
 
 interface RateLimitState {
     message: string;
+    /** Live tick value, decremented every second by the countdown effect. */
     secondsRemaining: number;
+    /**
+     * Wait duration captured at the moment the rate limit triggered.
+     * Held stable across the cooldown so the screen-reader announcement
+     * is read once on appearance rather than re-narrated every second.
+     */
+    initialSecondsRemaining: number;
 }
 
 function submitButtonLabel(isSubmitting: boolean, rateLimit: RateLimitState | null): string {

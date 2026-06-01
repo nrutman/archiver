@@ -89,4 +89,4 @@ Options:
 | `--mode`, `-m`     | `aes256` (default) or `zipcrypto`. Only meaningful when `--password` is set.   |
 | `--force`, `-f`    | Overwrite `--output` if it already exists.                                     |
 
-The command exits with code `0` on success, `2` on validation errors (missing or unreadable input file, unsupported encryption mode, missing `--output`, or refusing to overwrite without `--force`), and `1` on unexpected failures such as the destination filesystem being unwritable.
+The command exits with code `0` on success, `2` on validation errors (e.g. missing or unreadable input file, unsupported encryption mode, missing `--output`, refusing to overwrite without `--force`, or input that exceeds the file-count / size limits), and `1` on unexpected failures such as the destination filesystem being unwritable.

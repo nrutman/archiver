@@ -208,11 +208,19 @@ describe('ArchiveForm', () => {
             await act(async () => {
                 await vi.advanceTimersByTimeAsync(0);
             });
-            // The message lives in both a permanent sr-only live region
-            // (for screen readers) and the visible amber banner (for
-            // sighted users), so we expect two matching nodes during the
-            // cooldown window.
-            expect(screen.getAllByText(/too many archive requests from your ip/i)).toHaveLength(2);
+            // Pin the accessibility contract directly: the role="status"
+            // live region carries the message plus the initial wait
+            // duration once, while the visible banner shows the ticking
+            // countdown for sighted users. The sr-only region uses a
+            // distinct "in about N seconds" phrasing that doesn't appear
+            // in the visible banner ("in Ns."), so text queries
+            // disambiguate without coupling to role/name internals.
+            expect(screen.getByText(/about 3 seconds/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    /too many archive requests from your ip\. you can try again in about 3 seconds/i,
+                ),
+            ).toBeInTheDocument();
             expect(screen.getByText(/try again in 3s\./i)).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /try again in 3s/i })).toBeDisabled();
 

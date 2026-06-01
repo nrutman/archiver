@@ -65,6 +65,8 @@ Application validation will enforce the product limits independently. PHP and we
 
 The archive endpoint is rate-limited to 5 requests per minute per client IP. The PHP runtime determines the client IP from the TCP peer address by default, which is the _proxy's_ address when a load balancer, CDN, or LiteSpeed front-end is in front of PHP-FPM. Without further configuration, every visitor would share one bucket and trip the limit collectively.
 
+IPv4 clients are bucketed by full address (`/32`). IPv6 clients are bucketed by their `/64` prefix, so distinct clients that share a `/64` allocation — e.g. an ISP-issued residential range or a campus network — share a rate-limit window. This trades a small false-positive risk for protection against an IPv6 client rotating addresses inside its allocation to bypass the limit. IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`, common on dual-stack listeners) are unmapped to their IPv4 form before keying so they share buckets correctly with the same client seen as plain IPv4.
+
 Set the `TRUSTED_PROXIES` environment variable so Symfony trusts forwarded headers from your proxy fleet:
 
 ```bash

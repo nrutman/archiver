@@ -9,7 +9,6 @@ use App\Archive\ArchiveValidationException;
 use App\TemporaryStorage\TemporaryWorkspace;
 use App\TemporaryStorage\TemporaryWorkspaceFactory;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -23,15 +22,12 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class ArchiveController extends AbstractController
 {
-    private readonly LoggerInterface $logger;
-
     public function __construct(
         private readonly ArchiveCreationService $archiveCreationService,
         private readonly TemporaryWorkspaceFactory $workspaceFactory,
         private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
-        ?LoggerInterface $logger = null,
+        private readonly LoggerInterface $logger,
     ) {
-        $this->logger = $logger ?? new NullLogger();
     }
 
     /**

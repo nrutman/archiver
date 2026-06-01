@@ -2,6 +2,7 @@
 
 namespace App\Tests\Command;
 
+use App\Tests\Support\NormalizesConsoleOutputTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -9,6 +10,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class CreateArchiveCommandTest extends KernelTestCase
 {
+    use NormalizesConsoleOutputTrait;
+
     /** @var list<string> */
     private array $workspaces = [];
 
@@ -232,17 +235,6 @@ final class CreateArchiveCommandTest extends KernelTestCase
 
         self::assertSame(Command::INVALID, $exitCode);
         self::assertStringContainsString('does not exist', self::normalizeWhitespace($tester->getDisplay()));
-    }
-
-    /**
-     * SymfonyStyle wraps error boxes to the terminal width, so a literal
-     * substring assertion can fail on narrower CI terminals (e.g. "does not"
-     * lands at end of line, "exist" on the next). Collapse all whitespace to
-     * single spaces so the assertion only depends on the words themselves.
-     */
-    private static function normalizeWhitespace(string $value): string
-    {
-        return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 
     private function commandTester(): CommandTester

@@ -78,15 +78,8 @@ final class CreateArchiveCommand extends Command
 
         try {
             $uploadedFiles = $this->buildUploadedFiles($input);
-        } catch (\InvalidArgumentException $exception) {
-            $io->error($exception->getMessage());
-
-            return Command::INVALID;
-        }
-
-        try {
             $archiveRequest = $this->buildRequest($input, $uploadedFiles);
-        } catch (ArchiveValidationException $exception) {
+        } catch (\InvalidArgumentException|ArchiveValidationException $exception) {
             $io->error($exception->getMessage());
 
             return Command::INVALID;
