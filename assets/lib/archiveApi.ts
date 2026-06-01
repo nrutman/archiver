@@ -1,5 +1,21 @@
 export type EncryptionMode = 'aes256' | 'zipcrypto';
 
+/**
+ * Thrown when the archive API responds with HTTP 429.
+ *
+ * Callers can use {@link retryAfterSeconds} to drive a user-facing countdown
+ * before re-enabling the submit action.
+ */
+export class RateLimitError extends Error {
+    public readonly retryAfterSeconds: number;
+
+    constructor(message: string, retryAfterSeconds: number) {
+        super(message);
+        this.name = 'RateLimitError';
+        this.retryAfterSeconds = retryAfterSeconds;
+    }
+}
+
 export interface CreateArchiveInput {
     files: File[];
     passwordEnabled: boolean;
@@ -33,6 +49,10 @@ export async function createArchive(input: CreateArchiveInput): Promise<ArchiveD
         body: formData,
     });
 
+    if (response.status === 429) {
+        throw await rateLimitErrorFromResponse(response);
+    }
+
     if (!response.ok) {
         throw new Error(await errorMessageFromResponse(response));
     }
@@ -61,19 +81,54 @@ export function downloadArchive(download: ArchiveDownload): void {
 }
 
 async function errorMessageFromResponse(response: Response): Promise<string> {
-    try {
-        const body = (await response.json()) as unknown;
-        if (isErrorResponse(body)) {
-            return body.error.message;
-        }
-    } catch {
-        // Fall through to the generic message.
+    const body = await safeJsonBody(response);
+    if (isErrorResponse(body)) {
+        return body.error.message;
     }
 
     return 'Could not create the archive. Please try again.';
 }
 
-function isErrorResponse(value: unknown): value is { error: { message: string } } {
+async function rateLimitErrorFromResponse(response: Response): Promise<RateLimitError> {
+    const body = await safeJsonBody(response);
+
+    const message = isErrorResponse(body)
+        ? body.error.message
+        : 'Too many archive requests. Please wait a moment and try again.';
+
+    // Prefer the server-provided retry hint, then the Retry-After header, then
+    // a conservative fallback. Some proxies strip JSON error bodies, so the
+    // header-based path keeps the countdown working in those cases too.
+    const bodyRetry =
+        isErrorResponse(body) && typeof body.error.retryAfterSeconds === 'number'
+            ? body.error.retryAfterSeconds
+            : undefined;
+    const retryAfterSeconds = clampRetrySeconds(
+        bodyRetry ?? parseRetryAfterHeader(response.headers.get('Retry-After')),
+    );
+
+    return new RateLimitError(message, retryAfterSeconds);
+}
+
+async function safeJsonBody(response: Response): Promise<unknown> {
+    try {
+        return await response.clone().json();
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Narrows `unknown` to the verified shape of an API error body.
+ *
+ * The predicate only promises what it actually checks at runtime
+ * (a string `error.message`). Callers that read other optional fields
+ * such as `retryAfterSeconds` are responsible for their own narrowing
+ * — see `rateLimitErrorFromResponse` for the existing `typeof` guard.
+ */
+function isErrorResponse(
+    value: unknown,
+): value is { error: Record<string, unknown> & { message: string } } {
     return (
         typeof value === 'object' &&
         value !== null &&
@@ -83,6 +138,27 @@ function isErrorResponse(value: unknown): value is { error: { message: string } 
         'message' in value.error &&
         typeof value.error.message === 'string'
     );
+}
+
+function parseRetryAfterHeader(value: string | null): number | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    const seconds = Number(value);
+    return Number.isFinite(seconds) ? seconds : undefined;
+}
+
+function clampRetrySeconds(value: number | undefined): number {
+    // Missing or non-finite values fall back to a conservative 60s. Finite
+    // values are clamped to the documented 1-600s window so a malformed or
+    // zero Retry-After never re-enables the submit button instantly and a
+    // pathological large value can't lock the UI out indefinitely.
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return 60;
+    }
+
+    return Math.min(Math.max(1, Math.ceil(value)), 600);
 }
 
 function filenameFromDisposition(disposition: string | null): string {

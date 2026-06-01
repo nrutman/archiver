@@ -15,5 +15,9 @@ framework:
         #app: cache.adapter.apcu
 
         # Namespaced pools use the above "app" backend by default
-        #pools:
-        #my.dedicated.cache: null
+        pools:
+            # Stores rate limiter state on the filesystem so no database is
+            # required. Kept in its own pool so cache:clear does not blow
+            # away rate-limit windows mid-flight.
+            cache.rate_limiter:
+                adapter: cache.adapter.filesystem

@@ -21,7 +21,7 @@ All PRs should be squash-merged into `main`.
 - React / TypeScript / Vite frontend.
 - Tailwind CSS with shadcn-compatible UI primitives.
 - Built frontend assets under `public/build` are committed so production hosts do not need Node.js.
-- No database is planned for the core flow.
+- No database is planned for the core flow. Per-IP rate-limit state is persisted to a filesystem cache pool under `var/cache/<env>/pools/` rather than a database.
 - Files are temporary. Uploaded files should stay in PHP request temp storage where possible; generated ZIP files should live in short-lived app workspaces and be cleaned up aggressively.
 
 ## Commands
@@ -37,8 +37,9 @@ make check-built-assets # verify public/build matches the current frontend build
 make build          # rebuild frontend assets and warm Symfony cache; use only on machines with the frontend toolchain
 make production-update    # production update path using committed public/build assets; does not require the frontend toolchain
 make production-update-with-node    # production-style update that also installs/rebuilds frontend assets locally
-php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, and temp storage
+php bin/console app:doctor    # verify runtime extensions, ZIP support, PHP limits, temp storage, and rate-limiter cache
 php bin/console app:env:generate-local --app-env=prod    # generate an untracked .env.local with a fresh APP_SECRET
+php bin/console app:archive:create -o out.zip -p secret -m aes256 file1 file2    # build a ZIP locally without the HTTP API or rate limiter
 ```
 
 ## Testing guidance

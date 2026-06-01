@@ -1,0 +1,12 @@
+# Rate limiter configuration.
+#
+# The archive_create limiter caps how often a single client can hit the archive
+# creation endpoint. The state is persisted in the dedicated cache.rate_limiter
+# pool (configured in cache.yaml) so it survives requests without a database.
+framework:
+    rate_limiter:
+        archive_create:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'
+            cache_pool: 'cache.rate_limiter'

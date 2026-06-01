@@ -42,7 +42,7 @@ After deployment, run the doctor command as the same OS user that serves PHP or 
 sudo -u www-data php bin/console app:doctor --env=prod
 ```
 
-On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`. The doctor command verifies required PHP extensions, encrypted ZIP creation, PHP upload limits, and temporary storage permissions.
+On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`. The doctor command verifies required PHP extensions, encrypted ZIP creation, PHP upload limits, temporary storage permissions, and that the rate-limiter cache pool is reachable.
 
 ## PHP values
 
@@ -60,6 +60,34 @@ memory_limit = 512M
 ```
 
 Application validation will enforce the product limits independently. PHP and web-server limits must be high enough for the request to reach Symfony.
+
+## Reverse proxies and trusted client IPs
+
+The archive endpoint is rate-limited to 5 requests per minute per client IP. The PHP runtime determines the client IP from the TCP peer address by default, which is the _proxy's_ address when a load balancer, CDN, or LiteSpeed front-end is in front of PHP-FPM. Without further configuration, every visitor would share one bucket and trip the limit collectively.
+
+IPv4 clients are bucketed by full address (`/32`). IPv6 clients are bucketed by their `/64` prefix, so distinct clients that share a `/64` allocation — e.g. an ISP-issued residential range or a campus network — share a rate-limit window. This trades a small false-positive risk for protection against an IPv6 client rotating addresses inside its allocation to bypass the limit. IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`, common on dual-stack listeners) are unmapped to their IPv4 form before keying so they share buckets correctly with the same client seen as plain IPv4.
+
+Set the `TRUSTED_PROXIES` environment variable so Symfony trusts forwarded headers from your proxy fleet:
+
+```bash
+# Direct-access deployment (no proxy): leave empty.
+TRUSTED_PROXIES=
+
+# Behind a known reverse proxy or load balancer:
+TRUSTED_PROXIES=10.0.0.5,10.0.0.6
+
+# Behind a CDN that fronts requests from any RFC1918 address (cPanel/LSWS
+# typical setup with an internal proxy):
+TRUSTED_PROXIES=private_ranges
+```
+
+Only trust proxies you actually operate. Trusting the public internet would let any client spoof `X-Forwarded-For` and bypass the per-IP limit.
+
+`TRUSTED_PROXIES` is read at runtime, not compiled into the container. A plain `.env.local` change takes effect on the next request without any further command. If you compile environment variables with `composer dump-env prod`, re-run that command so `.env.local.php` is regenerated.
+
+The rate-limit state itself lives in `var/cache/<env>/pools/`. The PHP runtime user must be able to read and write that directory, which is already required for general Symfony cache.
+
+The application-level rate limit throttles archive _builds_, not raw uploads: PHP receives and parses the full multipart body before the controller dispatches, so an attacker can still consume bandwidth and temporary write space with oversized requests that immediately receive a `429`. Body-size and connection-rate limits belong at the web-server or proxy edge — e.g. Apache's `LimitRequestBody` / `mod_reqtimeout` and LiteSpeed's per-connection throttling — alongside the PHP `upload_max_filesize` and `post_max_size` values configured above.
 
 ## Apache and LiteSpeed routing
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -138,5 +138,142 @@ describe('ArchiveForm', () => {
         expect((body as FormData).get('encryptionMode')).toBe('zipcrypto');
         expect((body as FormData).getAll('files[]')).toHaveLength(1);
         expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('shows a cooldown banner, counts down, resets the form, and recovers on a successful retry', async () => {
+        // Drives the React effect with fake timers so the 3s countdown does
+        // not actually elapse in real time. We use fireEvent rather than
+        // userEvent here because userEvent's internal scheduling does not
+        // interoperate cleanly with fake timers swapped in mid-test.
+        vi.useFakeTimers();
+
+        try {
+            // First submit is rate-limited; second submit (after the
+            // cooldown ends) succeeds and triggers a download.
+            const fetchMock = vi
+                .spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce(
+                    new Response(
+                        JSON.stringify({
+                            error: {
+                                code: 'rate_limited',
+                                message: 'Too many archive requests from your IP.',
+                                retryAfterSeconds: 3,
+                            },
+                        }),
+                        {
+                            status: 429,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Retry-After': '3',
+                            },
+                        },
+                    ),
+                )
+                .mockResolvedValueOnce(
+                    new Response('zip', {
+                        headers: {
+                            'Content-Disposition': 'attachment; filename=archive-recovered.zip',
+                        },
+                        status: 200,
+                    }),
+                );
+
+            // Stub download plumbing so the success path can complete
+            // without jsdom throwing on URL.createObjectURL.
+            Object.defineProperty(URL, 'createObjectURL', {
+                configurable: true,
+                value: vi.fn(() => 'blob:test'),
+            });
+            Object.defineProperty(URL, 'revokeObjectURL', {
+                configurable: true,
+                value: vi.fn(),
+            });
+            const clickSpy = vi
+                .spyOn(HTMLAnchorElement.prototype, 'click')
+                .mockImplementation(() => undefined);
+
+            render(<ArchiveForm />);
+
+            fireEvent.change(screen.getByLabelText(/drop files here/i), {
+                target: { files: [new File(['secret'], 'secret.txt')] },
+            });
+            fireEvent.click(screen.getByRole('button', { name: /generate and download zip/i }));
+
+            // Flush the fetch promise chain. createArchive awaits fetch,
+            // rateLimitErrorFromResponse, and response.clone().json(), so a
+            // single Promise.resolve() tick is not enough. Advancing fake
+            // timers by 0 also drains microtasks and is robust against
+            // additional awaits being inserted in the chain later.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            // Pin the accessibility contract directly: the role="status"
+            // live region carries the message plus the initial wait
+            // duration once, while the visible banner shows the ticking
+            // countdown for sighted users. The sr-only region uses a
+            // distinct "in about N seconds" phrasing that doesn't appear
+            // in the visible banner ("in Ns."), so text queries
+            // disambiguate without coupling to role/name internals.
+            expect(screen.getByText(/about 3 seconds/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    /too many archive requests from your ip\. you can try again in about 3 seconds/i,
+                ),
+            ).toBeInTheDocument();
+            expect(screen.getByText(/try again in 3s\./i)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /try again in 3s/i })).toBeDisabled();
+
+            // Countdown ticks down once per second.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(screen.getByText(/try again in 2s\./i)).toBeInTheDocument();
+
+            // After the full cooldown elapses, the banner disappears and the
+            // submit button returns to its default label and enabled state.
+            // Tick one second at a time so each render commits and schedules
+            // the next setTimeout before we advance the clock again.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(screen.getByText(/try again in 1s\./i)).toBeInTheDocument();
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            // After cooldown the sr-only region renders an empty string and
+            // the visible banner unmounts, so the message text is no longer
+            // findable anywhere in the document.
+            expect(
+                screen.queryByText(/too many archive requests from your ip/i),
+            ).not.toBeInTheDocument();
+            expect(screen.queryByText(/try again in/i)).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /generate and download zip/i }),
+            ).toBeEnabled();
+
+            // A fresh submit after the cooldown ends should succeed and
+            // fire the download anchor, with no rate-limit residue.
+            fireEvent.click(screen.getByRole('button', { name: /generate and download zip/i }));
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(clickSpy).toHaveBeenCalled();
+            expect(
+                screen.queryByText(/too many archive requests from your ip/i),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /generate and download zip/i }),
+            ).toBeEnabled();
+        } finally {
+            vi.useRealTimers();
+            // Object.defineProperty stubs with a `value` descriptor are not
+            // restored by vi.restoreAllMocks(), so undo them here to keep
+            // the URL.* surface clean for later tests.
+            delete (URL as { createObjectURL?: unknown }).createObjectURL;
+            delete (URL as { revokeObjectURL?: unknown }).revokeObjectURL;
+        }
     });
 });

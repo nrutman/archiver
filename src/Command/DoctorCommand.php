@@ -7,6 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 #[AsCommand(
     name: 'app:doctor',
@@ -22,6 +23,7 @@ final class DoctorCommand extends Command
         private readonly int $maxFiles,
         private readonly int $maxSingleFileBytes,
         private readonly int $maxTotalBytes,
+        private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
     ) {
         parent::__construct();
     }
@@ -54,6 +56,7 @@ final class DoctorCommand extends Command
         if ([] === $errors) {
             $this->checkEncryptedZipCreation($errors);
         }
+        $this->checkRateLimiterStorage($errors);
         $this->checkPhpLimits($warnings);
 
         if ([] !== $warnings) {
@@ -175,6 +178,25 @@ final class DoctorCommand extends Command
         }
 
         rmdir($directory);
+    }
+
+    /**
+     * @param list<string> $errors
+     */
+    private function checkRateLimiterStorage(array &$errors): void
+    {
+        try {
+            // Consume one token against a dedicated probe key so the limiter
+            // writes through to its backing cache pool. SlidingWindowLimiter
+            // short-circuits ->consume(0) before calling storage->save(),
+            // which would let a read-only or wrong-owner cache directory
+            // pass this check silently and then fail under real traffic.
+            // The 'doctor-probe' key is isolated from any real client
+            // bucket, so consuming a token here has no production impact.
+            $this->archiveCreateLimiter->create('doctor-probe')->consume(1);
+        } catch (\Throwable $exception) {
+            $errors[] = sprintf('Could not exercise the archive_create rate limiter: %s', $exception->getMessage());
+        }
     }
 
     /**
