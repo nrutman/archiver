@@ -7,6 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 #[AsCommand(
     name: 'app:doctor',
@@ -22,6 +23,7 @@ final class DoctorCommand extends Command
         private readonly int $maxFiles,
         private readonly int $maxSingleFileBytes,
         private readonly int $maxTotalBytes,
+        private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
     ) {
         parent::__construct();
     }
@@ -54,6 +56,7 @@ final class DoctorCommand extends Command
         if ([] === $errors) {
             $this->checkEncryptedZipCreation($errors);
         }
+        $this->checkRateLimiterStorage($errors);
         $this->checkPhpLimits($warnings);
 
         if ([] !== $warnings) {
@@ -175,6 +178,22 @@ final class DoctorCommand extends Command
         }
 
         rmdir($directory);
+    }
+
+    /**
+     * @param list<string> $errors
+     */
+    private function checkRateLimiterStorage(array &$errors): void
+    {
+        try {
+            // Consume zero tokens to exercise the backing cache pool without
+            // mutating any real client's window. If the filesystem pool cannot
+            // read or write its directory, this surfaces the error here
+            // instead of mid-request when a user is hitting the endpoint.
+            $this->archiveCreateLimiter->create('doctor-probe')->consume(0);
+        } catch (\Throwable $exception) {
+            $errors[] = sprintf('Could not exercise the archive_create rate limiter: %s', $exception->getMessage());
+        }
     }
 
     /**

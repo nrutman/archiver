@@ -42,7 +42,7 @@ After deployment, run the doctor command as the same OS user that serves PHP or 
 sudo -u www-data php bin/console app:doctor --env=prod
 ```
 
-On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`. The doctor command verifies required PHP extensions, encrypted ZIP creation, PHP upload limits, and temporary storage permissions.
+On cPanel/shared hosting, run the command as the cPanel account/PHP runtime user instead of `root`. The doctor command verifies required PHP extensions, encrypted ZIP creation, PHP upload limits, temporary storage permissions, and that the rate-limiter cache pool is reachable.
 
 ## PHP values
 
@@ -60,6 +60,28 @@ memory_limit = 512M
 ```
 
 Application validation will enforce the product limits independently. PHP and web-server limits must be high enough for the request to reach Symfony.
+
+## Reverse proxies and trusted client IPs
+
+The archive endpoint is rate-limited to 5 requests per minute per client IP. The PHP runtime determines the client IP from the TCP peer address by default, which is the _proxy's_ address when a load balancer, CDN, or LiteSpeed front-end is in front of PHP-FPM. Without further configuration, every visitor would share one bucket and trip the limit collectively.
+
+Set the `TRUSTED_PROXIES` environment variable so Symfony trusts forwarded headers from your proxy fleet:
+
+```bash
+# Direct-access deployment (no proxy): leave empty.
+TRUSTED_PROXIES=
+
+# Behind a known reverse proxy or load balancer:
+TRUSTED_PROXIES=10.0.0.5,10.0.0.6
+
+# Behind a CDN that fronts requests from any RFC1918 address (cPanel/LSWS
+# typical setup with an internal proxy):
+TRUSTED_PROXIES=private_ranges
+```
+
+Only trust proxies you actually operate. Trusting the public internet would let any client spoof `X-Forwarded-For` and bypass the per-IP limit. After changing the value, run `php bin/console cache:clear --env=prod` so the new configuration is compiled.
+
+The rate-limit state itself lives in `var/cache/<env>/pools/`. The PHP runtime user must be able to read and write that directory, which is already required for general Symfony cache.
 
 ## Apache and LiteSpeed routing
 

@@ -5,6 +5,14 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    # Trust reverse-proxy headers when configured. Without TRUSTED_PROXIES set,
+    # Request::getClientIp() returns the proxy address, which would cause the
+    # rate limiter to share a bucket across every visitor. Hosts that terminate
+    # TLS at a load balancer or CDN should populate TRUSTED_PROXIES.
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers:
+        ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port']
+
     #esi: true
     #fragments: true
 

@@ -1,11 +1,16 @@
 import { Download } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { FileDropzone } from '@/components/FileDropzone';
 import { FileList, type SelectedFile } from '@/components/FileList';
 import { PasswordControls } from '@/components/PasswordControls';
 import { Button } from '@/components/ui/button';
-import { createArchive, downloadArchive, type EncryptionMode } from '@/lib/archiveApi';
+import {
+    RateLimitError,
+    createArchive,
+    downloadArchive,
+    type EncryptionMode,
+} from '@/lib/archiveApi';
 import { generatePassword } from '@/lib/passwordGenerator';
 
 /**
@@ -18,9 +23,28 @@ export function ArchiveForm() {
     const [encryptionMode, setEncryptionMode] = useState<EncryptionMode>('aes256');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [rateLimit, setRateLimit] = useState<RateLimitState | null>(null);
 
+    useEffect(() => {
+        if (!rateLimit || rateLimit.secondsRemaining <= 0) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setRateLimit((current) =>
+                current ? { ...current, secondsRemaining: current.secondsRemaining - 1 } : current,
+            );
+        }, 1000);
+
+        return () => window.clearTimeout(timer);
+    }, [rateLimit]);
+
+    const isRateLimited = rateLimit !== null && rateLimit.secondsRemaining > 0;
     const canSubmit =
-        files.length > 0 && (!passwordEnabled || password.trim().length > 0) && !isSubmitting;
+        files.length > 0 &&
+        (!passwordEnabled || password.trim().length > 0) &&
+        !isSubmitting &&
+        !isRateLimited;
     const selectedFiles = useMemo(() => files.map((selectedFile) => selectedFile.file), [files]);
 
     function addFiles(newFiles: File[]): void {
@@ -51,11 +75,18 @@ export function ArchiveForm() {
             });
             downloadArchive(archive);
         } catch (caughtError) {
-            setError(
-                caughtError instanceof Error
-                    ? caughtError.message
-                    : 'Could not create the archive. Please try again.',
-            );
+            if (caughtError instanceof RateLimitError) {
+                setRateLimit({
+                    message: caughtError.message,
+                    secondsRemaining: caughtError.retryAfterSeconds,
+                });
+            } else {
+                setError(
+                    caughtError instanceof Error
+                        ? caughtError.message
+                        : 'Could not create the archive. Please try again.',
+                );
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -97,6 +128,18 @@ export function ArchiveForm() {
                     </div>
                 ) : null}
 
+                {isRateLimited && rateLimit ? (
+                    <div
+                        className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        role="status"
+                    >
+                        <p className="font-medium">{rateLimit.message}</p>
+                        <p className="mt-1 text-amber-800">
+                            You can try again in {rateLimit.secondsRemaining}s.
+                        </p>
+                    </div>
+                ) : null}
+
                 <Button
                     className="w-full"
                     disabled={!canSubmit}
@@ -105,11 +148,32 @@ export function ArchiveForm() {
                     type="button"
                 >
                     <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                    {isSubmitting ? 'Creating archive…' : 'Generate and download ZIP'}
+                    {submitButtonLabel(isSubmitting, isRateLimited, rateLimit?.secondsRemaining)}
                 </Button>
             </aside>
         </div>
     );
+}
+
+interface RateLimitState {
+    message: string;
+    secondsRemaining: number;
+}
+
+function submitButtonLabel(
+    isSubmitting: boolean,
+    isRateLimited: boolean,
+    secondsRemaining: number | undefined,
+): string {
+    if (isSubmitting) {
+        return 'Creating archive…';
+    }
+
+    if (isRateLimited && typeof secondsRemaining === 'number') {
+        return `Try again in ${secondsRemaining}s`;
+    }
+
+    return 'Generate and download ZIP';
 }
 
 function createSelectedFileId(file: File): string {

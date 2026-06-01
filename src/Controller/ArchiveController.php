@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\RateLimiter\RateLimit;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ArchiveController extends AbstractController
@@ -22,6 +24,7 @@ final class ArchiveController extends AbstractController
     public function __construct(
         private readonly ArchiveCreationService $archiveCreationService,
         private readonly TemporaryWorkspaceFactory $workspaceFactory,
+        private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
     ) {
     }
 
@@ -31,6 +34,11 @@ final class ArchiveController extends AbstractController
     #[Route('/api/archives', name: 'api_archives_create', methods: ['POST'])]
     public function create(Request $request): Response
     {
+        $limit = $this->consumeRateLimit($request);
+        if (!$limit->isAccepted()) {
+            return $this->rateLimitedResponse($limit);
+        }
+
         $workspace = $this->workspaceFactory->create();
 
         try {
@@ -47,6 +55,43 @@ final class ArchiveController extends AbstractController
 
             throw $exception;
         }
+    }
+
+    private function consumeRateLimit(Request $request): RateLimit
+    {
+        return $this->archiveCreateLimiter->create($this->rateLimitKey($request))->consume(1);
+    }
+
+    /**
+     * Stable rate-limit bucket key for the requesting client.
+     *
+     * Falls back to a single shared bucket when the client IP is unavailable,
+     * which is intentionally conservative: an unknown source still counts
+     * toward the limit rather than being waved through.
+     */
+    private function rateLimitKey(Request $request): string
+    {
+        return $request->getClientIp() ?? 'unknown-client';
+    }
+
+    private function rateLimitedResponse(RateLimit $limit): JsonResponse
+    {
+        $retryAfterSeconds = max(1, $limit->getRetryAfter()->getTimestamp() - time());
+
+        $response = new JsonResponse([
+            'error' => [
+                'code' => 'rate_limited',
+                'message' => 'Too many archive requests from your IP. Please wait a moment and try again.',
+                'retryAfterSeconds' => $retryAfterSeconds,
+            ],
+        ], Response::HTTP_TOO_MANY_REQUESTS);
+
+        $response->headers->set('Retry-After', (string) $retryAfterSeconds);
+        $response->headers->set('X-RateLimit-Limit', (string) $limit->getLimit());
+        $response->headers->set('X-RateLimit-Remaining', (string) max(0, $limit->getRemainingTokens()));
+        $response->headers->set('X-RateLimit-Reset', (string) $limit->getRetryAfter()->getTimestamp());
+
+        return $response;
     }
 
     private function validationErrorResponse(string $message): JsonResponse

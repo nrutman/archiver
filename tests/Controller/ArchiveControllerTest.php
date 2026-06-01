@@ -11,6 +11,20 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ArchiveControllerTest extends WebTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Each test owns a fresh rate-limit window. The cache.rate_limiter
+        // pool persists across tests inside one PHPUnit run, so without this
+        // the 6th request to 127.0.0.1 anywhere in this class would 429.
+        self::bootKernel();
+        /** @var \Psr\Cache\CacheItemPoolInterface $pool */
+        $pool = self::getContainer()->get('cache.rate_limiter');
+        $pool->clear();
+        self::ensureKernelShutdown();
+    }
+
     public function testItCreatesAnUnencryptedArchiveFromUploadedFiles(): void
     {
         $client = static::createClient();
@@ -144,6 +158,70 @@ final class ArchiveControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         self::assertStringContainsString('Unsupported encryption mode', (string) $client->getResponse()->getContent());
+    }
+
+    public function testItRateLimitsRepeatedRequestsFromTheSameIp(): void
+    {
+        $client = static::createClient();
+        $remoteIp = '203.0.113.42';
+
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('file-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => $remoteIp],
+            );
+            self::assertResponseIsSuccessful(sprintf('Request %d should be under the limit.', $i + 1));
+        }
+
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('over-limit.txt', 'body')]],
+            ['REMOTE_ADDR' => $remoteIp],
+        );
+
+        $response = $client->getResponse();
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame('application/json', $response->headers->get('Content-Type'));
+
+        $body = json_decode((string) $response->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        self::assertSame('rate_limited', $body['error']['code'] ?? null);
+        self::assertIsString($body['error']['message'] ?? null);
+        self::assertGreaterThan(0, $body['error']['retryAfterSeconds'] ?? 0);
+        self::assertNotNull($response->headers->get('Retry-After'));
+        self::assertSame('5', $response->headers->get('X-RateLimit-Limit'));
+    }
+
+    public function testItRateLimitsIndependentlyPerClientIp(): void
+    {
+        $client = static::createClient();
+
+        // Burn through the limit for one IP.
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('a-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '198.51.100.10'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        // A different IP should still be allowed through.
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('b.txt', 'body')]],
+            ['REMOTE_ADDR' => '198.51.100.20'],
+        );
+        self::assertResponseIsSuccessful('A separate IP must not inherit another client\'s window.');
     }
 
     public function testItReturnsValidationErrorsForInvalidUtf8FormValues(): void

@@ -109,7 +109,10 @@ memory_limit = 512M
 
 The application will still enforce its own limits so users receive clear validation errors. The PHP/web-server settings only make sure large requests can reach Symfony.
 
-See [`docs/deployment.md`](docs/deployment.md) for Apache PHP-FPM and LiteSpeed LSAPI notes.
+## Further reading
+
+- [`docs/api.md`](docs/api.md) — HTTP API reference, `curl` example, and the `app:archive:create` console command.
+- [`docs/deployment.md`](docs/deployment.md) — Apache PHP-FPM and LiteSpeed LSAPI notes, including reverse-proxy and trusted-proxy setup.
 
 ## Temporary files
 

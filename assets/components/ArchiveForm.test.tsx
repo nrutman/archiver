@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -138,5 +138,78 @@ describe('ArchiveForm', () => {
         expect((body as FormData).get('encryptionMode')).toBe('zipcrypto');
         expect((body as FormData).getAll('files[]')).toHaveLength(1);
         expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('shows a cooldown banner, counts down, and resets the form when the cooldown ends', async () => {
+        // Drives the React effect with fake timers so the 3s countdown does
+        // not actually elapse in real time. We use fireEvent rather than
+        // userEvent here because userEvent's internal scheduling does not
+        // interoperate cleanly with fake timers swapped in mid-test.
+        vi.useFakeTimers();
+
+        try {
+            vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        error: {
+                            code: 'rate_limited',
+                            message: 'Too many archive requests from your IP.',
+                            retryAfterSeconds: 3,
+                        },
+                    }),
+                    {
+                        status: 429,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Retry-After': '3',
+                        },
+                    },
+                ),
+            );
+
+            render(<ArchiveForm />);
+
+            fireEvent.change(screen.getByLabelText(/drop files here/i), {
+                target: { files: [new File(['secret'], 'secret.txt')] },
+            });
+            fireEvent.click(screen.getByRole('button', { name: /generate and download zip/i }));
+
+            // Initial banner state: server message, 3-second countdown,
+            // submit button disabled. Flush the fetch promise + state update.
+            await act(async () => {
+                await Promise.resolve();
+            });
+            expect(screen.getByText(/too many archive requests from your ip/i)).toBeInTheDocument();
+            expect(screen.getByText(/try again in 3s\./i)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /try again in 3s/i })).toBeDisabled();
+
+            // Countdown ticks down once per second.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(screen.getByText(/try again in 2s\./i)).toBeInTheDocument();
+
+            // After the full cooldown elapses, the banner disappears and the
+            // submit button returns to its default label and enabled state.
+            // Tick one second at a time so each render commits and schedules
+            // the next setTimeout before we advance the clock again.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(screen.getByText(/try again in 1s\./i)).toBeInTheDocument();
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(
+                screen.queryByText(/too many archive requests from your ip/i),
+            ).not.toBeInTheDocument();
+            expect(screen.queryByText(/try again in/i)).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /generate and download zip/i }),
+            ).toBeEnabled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

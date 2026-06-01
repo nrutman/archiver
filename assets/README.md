@@ -6,7 +6,7 @@ The frontend is a React and TypeScript app compiled by Vite and mounted from the
 
 - `assets/main.tsx` mounts React into `#archiver-root`.
 - `assets/ArchiveApp.tsx` contains the current product shell and renders the archive workflow.
-- `assets/components/ArchiveForm.tsx` owns selected files, password settings, API submission, and download triggering.
+- `assets/components/ArchiveForm.tsx` owns selected files, password settings, API submission, download triggering, and the rate-limit cooldown banner shown when the API responds with `429`.
 - `assets/styles/app.css` loads Tailwind and the shadcn-compatible design tokens.
 
 ## Component conventions
