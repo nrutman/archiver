@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "af32f8978ec0886fd6995d8bb46f593b",
+    "content-hash": "275de1f43934fa1264f8fab13787b6db",
     "packages": [
         {
             "name": "pentatrion/vite-bundle",

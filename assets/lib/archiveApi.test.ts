@@ -61,6 +61,49 @@ describe('archiveApi', () => {
         });
     });
 
+    it.each([
+        {
+            name: 'no body, no Retry-After header',
+            response: new Response('', { status: 429 }),
+            expected: 60,
+        },
+        {
+            name: 'Retry-After above the 600s ceiling',
+            response: new Response('', { status: 429, headers: { 'Retry-After': '99999' } }),
+            expected: 600,
+        },
+        {
+            name: 'Retry-After as an HTTP-date (unsupported — falls back)',
+            response: new Response('', {
+                status: 429,
+                headers: { 'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT' },
+            }),
+            expected: 60,
+        },
+        {
+            name: 'Retry-After of zero (clamped up to the 1s floor)',
+            response: new Response('', { status: 429, headers: { 'Retry-After': '0' } }),
+            expected: 1,
+        },
+    ])('clamps retryAfterSeconds on a 429: $name', async ({ response, expected }) => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+
+        let captured: unknown;
+        try {
+            await createArchive({
+                encryptionMode: 'aes256',
+                files: [new File(['secret'], 'secret.txt')],
+                password: 'password',
+                passwordEnabled: true,
+            });
+        } catch (error) {
+            captured = error;
+        }
+
+        expect(captured).toBeInstanceOf(RateLimitError);
+        expect((captured as RateLimitError).retryAfterSeconds).toBe(expected);
+    });
+
     it('falls back to the Retry-After header when the 429 body is missing', async () => {
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(
             new Response('', {

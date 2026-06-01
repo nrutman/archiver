@@ -9,6 +9,22 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class CreateArchiveCommandTest extends KernelTestCase
 {
+    /** @var list<string> */
+    private array $workspaces = [];
+
+    protected function tearDown(): void
+    {
+        // Per-test cleanup keeps temp dirs from accumulating across the run
+        // and ensures a failing test's workspace is removed immediately
+        // rather than waiting for process shutdown.
+        foreach ($this->workspaces as $workspace) {
+            $this->removeWorkspace($workspace);
+        }
+        $this->workspaces = [];
+
+        parent::tearDown();
+    }
+
     public function testItWritesAnEncryptedArchiveFromLocalFiles(): void
     {
         $tester = $this->commandTester();
@@ -130,6 +146,80 @@ final class CreateArchiveCommandTest extends KernelTestCase
         self::assertSame('placeholder', file_get_contents($outputPath));
     }
 
+    public function testItWritesAZipCryptoEncryptedArchive(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/legacy.txt';
+        file_put_contents($sourcePath, 'compat-payload');
+
+        $outputPath = $workspace.'/out.zip';
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+            '--output' => $outputPath,
+            '--password' => 'compat-password-1234',
+            '--mode' => 'zipcrypto',
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $tester->getDisplay());
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($outputPath));
+
+        try {
+            self::assertTrue($zip->setPassword('compat-password-1234'));
+            self::assertSame('compat-payload', $zip->getFromName('legacy.txt'));
+            self::assertSame(
+                \ZipArchive::EM_TRAD_PKWARE,
+                $zip->statName('legacy.txt')['encryption_method'] ?? null,
+            );
+        } finally {
+            $zip->close();
+        }
+    }
+
+    public function testItErrorsOnUnsupportedEncryptionMode(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/alpha.txt';
+        file_put_contents($sourcePath, 'payload');
+
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+            '--output' => $workspace.'/out.zip',
+            '--password' => 'pw',
+            '--mode' => 'bogus',
+        ]);
+
+        self::assertSame(Command::INVALID, $exitCode);
+        self::assertStringContainsString(
+            'Unsupported encryption mode',
+            self::normalizeWhitespace($tester->getDisplay()),
+        );
+    }
+
+    public function testItErrorsWhenOutputOptionIsMissing(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/alpha.txt';
+        file_put_contents($sourcePath, 'payload');
+
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+        ]);
+
+        self::assertSame(Command::INVALID, $exitCode);
+        self::assertStringContainsString(
+            '--output option is required',
+            self::normalizeWhitespace($tester->getDisplay()),
+        );
+    }
+
     public function testItErrorsWhenAnInputFileDoesNotExist(): void
     {
         $tester = $this->commandTester();
@@ -170,21 +260,24 @@ final class CreateArchiveCommandTest extends KernelTestCase
             self::fail(sprintf('Could not create temporary workspace "%s".', $workspace));
         }
 
-        register_shutdown_function(static function () use ($workspace): void {
-            if (!is_dir($workspace)) {
-                return;
-            }
-
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($workspace, \FilesystemIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST,
-            );
-            foreach ($iterator as $item) {
-                $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
-            }
-            @rmdir($workspace);
-        });
+        $this->workspaces[] = $workspace;
 
         return $workspace;
+    }
+
+    private function removeWorkspace(string $workspace): void
+    {
+        if (!is_dir($workspace)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($workspace, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        foreach ($iterator as $item) {
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+        @rmdir($workspace);
     }
 }

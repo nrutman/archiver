@@ -79,9 +79,13 @@ TRUSTED_PROXIES=10.0.0.5,10.0.0.6
 TRUSTED_PROXIES=private_ranges
 ```
 
-Only trust proxies you actually operate. Trusting the public internet would let any client spoof `X-Forwarded-For` and bypass the per-IP limit. After changing the value, run `php bin/console cache:clear --env=prod` so the new configuration is compiled.
+Only trust proxies you actually operate. Trusting the public internet would let any client spoof `X-Forwarded-For` and bypass the per-IP limit.
+
+`TRUSTED_PROXIES` is read at runtime, not compiled into the container. A plain `.env.local` change takes effect on the next request without any further command. If you compile environment variables with `composer dump-env prod`, re-run that command so `.env.local.php` is regenerated.
 
 The rate-limit state itself lives in `var/cache/<env>/pools/`. The PHP runtime user must be able to read and write that directory, which is already required for general Symfony cache.
+
+The application-level rate limit throttles archive _builds_, not raw uploads: PHP receives and parses the full multipart body before the controller dispatches, so an attacker can still consume bandwidth and temporary write space with oversized requests that immediately receive a `429`. Body-size and connection-rate limits belong at the web-server or proxy edge — e.g. Apache's `LimitRequestBody` / `mod_reqtimeout` and LiteSpeed's per-connection throttling — alongside the PHP `upload_max_filesize` and `post_max_size` values configured above.
 
 ## Apache and LiteSpeed routing
 

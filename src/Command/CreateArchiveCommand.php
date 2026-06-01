@@ -9,11 +9,14 @@ use App\Archive\ArchiveValidationException;
 use App\TemporaryStorage\TemporaryWorkspaceFactory;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 #[AsCommand(
@@ -94,8 +97,14 @@ final class CreateArchiveCommand extends Command
         try {
             $zipPath = $this->archiveCreationService->createArchive($archiveRequest, $workspace);
 
-            if (!@copy($zipPath, $outputPath)) {
-                $io->error(sprintf('Could not write the archive to "%s".', $outputPath));
+            try {
+                (new Filesystem())->copy($zipPath, $outputPath, overwriteNewerFiles: true);
+            } catch (IOException $exception) {
+                // Surface the underlying OS reason (permission denied, no
+                // space, missing parent directory) rather than a generic
+                // "could not write" message; that detail is what the
+                // operator needs to fix the host.
+                $io->error(sprintf('Could not write the archive to "%s": %s', $outputPath, $exception->getMessage()));
 
                 return Command::FAILURE;
             }
@@ -107,7 +116,7 @@ final class CreateArchiveCommand extends Command
             $workspace->close();
         }
 
-        $io->success(sprintf('Wrote archive to %s (%s).', $outputPath, $this->formatBytes((int) filesize($outputPath))));
+        $io->success(sprintf('Wrote archive to %s (%s).', $outputPath, Helper::formatMemory((int) filesize($outputPath))));
 
         return Command::SUCCESS;
     }
@@ -170,23 +179,5 @@ final class CreateArchiveCommand extends Command
             : ArchiveEncryptionMode::None;
 
         return new ArchiveCreationRequest($files, $mode, $hasPassword ? $password : null);
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        if ($bytes < 1024) {
-            return $bytes.' B';
-        }
-
-        $units = ['KB', 'MB', 'GB'];
-        $value = $bytes / 1024;
-        foreach ($units as $unit) {
-            if ($value < 1024 || $unit === end($units)) {
-                return sprintf('%.1f %s', $value, $unit);
-            }
-            $value /= 1024;
-        }
-
-        return $bytes.' B';
     }
 }

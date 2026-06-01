@@ -12,8 +12,8 @@ Streams a ZIP archive built from uploaded files. The request must be `multipart/
 | ----------------- | ----------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `files[]`         | file part               | yes                         | One file part per archive entry. Can be repeated; a single `files` part also works.                                        |
 | `passwordEnabled` | string `true` / `false` | yes                         | When `false` an unencrypted archive is produced.                                                                           |
-| `password`        | string                  | when `passwordEnabled=true` | UTF-8, no null bytes, 255 characters or fewer.                                                                             |
-| `encryptionMode`  | `aes256` or `zipcrypto` | when `passwordEnabled=true` | Defaults to `aes256` when omitted. `zipcrypto` is provided only for compatibility with legacy Windows tools and is weaker. |
+| `password`        | string                  | when `passwordEnabled=true` | No null bytes, 255 characters or fewer. Send as UTF-8.                                                                     |
+| `encryptionMode`  | `aes256` or `zipcrypto` | no                          | Defaults to `aes256` when omitted. `zipcrypto` is provided only for compatibility with legacy Windows tools and is weaker. |
 
 #### Success (`200 OK`)
 
@@ -66,7 +66,7 @@ curl -fSL -o archive.zip \
   https://archiver.example.com/api/archives
 ```
 
-On error, `curl -fSL` will exit non-zero and print the server's JSON response. Drop `-f` if you want to inspect the body yourself.
+On an HTTP error, `curl -fSL` exits non-zero and prints only a short curl error to stderr — the `-f`/`--fail` flag suppresses the response body. Drop `-f` (e.g. `curl -SL`) when you want to see the server's JSON error body.
 
 ## CLI: `app:archive:create`
 
@@ -89,4 +89,4 @@ Options:
 | `--mode`, `-m`     | `aes256` (default) or `zipcrypto`. Only meaningful when `--password` is set.   |
 | `--force`, `-f`    | Overwrite `--output` if it already exists.                                     |
 
-The command exits with code `0` on success, `2` on validation errors (bad path, unsupported encryption mode, missing password), and `1` on unexpected failures.
+The command exits with code `0` on success, `2` on validation errors (unreadable input file, unsupported encryption mode, missing `--output`, or refusing to overwrite without `--force`), and `1` on unexpected failures such as the destination filesystem being unwritable.

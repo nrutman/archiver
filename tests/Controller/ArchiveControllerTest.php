@@ -195,6 +195,9 @@ final class ArchiveControllerTest extends WebTestCase
         self::assertGreaterThan(0, $body['error']['retryAfterSeconds'] ?? 0);
         self::assertNotNull($response->headers->get('Retry-After'));
         self::assertSame('5', $response->headers->get('X-RateLimit-Limit'));
+        self::assertSame('0', $response->headers->get('X-RateLimit-Remaining'));
+        self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('X-RateLimit-Reset'));
+        self::assertGreaterThan(time(), (int) $response->headers->get('X-RateLimit-Reset'));
     }
 
     public function testValidationErrorsStillConsumeTheRateLimitWindow(): void

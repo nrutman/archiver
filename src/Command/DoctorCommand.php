@@ -186,11 +186,14 @@ final class DoctorCommand extends Command
     private function checkRateLimiterStorage(array &$errors): void
     {
         try {
-            // Consume zero tokens to exercise the backing cache pool without
-            // mutating any real client's window. If the filesystem pool cannot
-            // read or write its directory, this surfaces the error here
-            // instead of mid-request when a user is hitting the endpoint.
-            $this->archiveCreateLimiter->create('doctor-probe')->consume(0);
+            // Consume one token against a dedicated probe key so the limiter
+            // writes through to its backing cache pool. SlidingWindowLimiter
+            // short-circuits ->consume(0) before calling storage->save(),
+            // which would let a read-only or wrong-owner cache directory
+            // pass this check silently and then fail under real traffic.
+            // The 'doctor-probe' key is isolated from any real client
+            // bucket, so consuming a token here has no production impact.
+            $this->archiveCreateLimiter->create('doctor-probe')->consume(1);
         } catch (\Throwable $exception) {
             $errors[] = sprintf('Could not exercise the archive_create rate limiter: %s', $exception->getMessage());
         }

@@ -8,6 +8,8 @@ use App\Archive\ArchiveEncryptionMode;
 use App\Archive\ArchiveValidationException;
 use App\TemporaryStorage\TemporaryWorkspace;
 use App\TemporaryStorage\TemporaryWorkspaceFactory;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -21,11 +23,15 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class ArchiveController extends AbstractController
 {
+    private readonly LoggerInterface $logger;
+
     public function __construct(
         private readonly ArchiveCreationService $archiveCreationService,
         private readonly TemporaryWorkspaceFactory $workspaceFactory,
         private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
+        ?LoggerInterface $logger = null,
     ) {
+        $this->logger = $logger ?? new NullLogger();
     }
 
     /**
@@ -65,13 +71,40 @@ final class ArchiveController extends AbstractController
     /**
      * Stable rate-limit bucket key for the requesting client.
      *
-     * Falls back to a single shared bucket when the client IP is unavailable,
-     * which is intentionally conservative: an unknown source still counts
-     * toward the limit rather than being waved through.
+     * IPv4 is keyed at full /32 precision. IPv6 is collapsed to its /64
+     * routing prefix because typical IPv6 allocations give a single client
+     * many billions of source addresses; bucketing at /128 would let a
+     * client rotate addresses per request and trivially bypass the limit.
+     *
+     * Falls back to a single shared bucket when the client IP is
+     * unavailable, which is intentionally conservative: an unknown source
+     * still counts toward the limit rather than being waved through. The
+     * fallback also logs a warning because it should not happen on a
+     * correctly configured front-end and silently sharing one global window
+     * across every visitor would be a self-inflicted denial-of-service.
      */
     private function rateLimitKey(Request $request): string
     {
-        return $request->getClientIp() ?? 'unknown-client';
+        $clientIp = $request->getClientIp();
+        if (null === $clientIp) {
+            $this->logger->warning('Archive rate limit fell back to a shared bucket: no client IP was available on the request. Check the front-end / proxy configuration.');
+
+            return 'unknown-client';
+        }
+
+        $packed = @inet_pton($clientIp);
+        if (false === $packed) {
+            // Symfony validates the IP before reaching here, so this branch
+            // is defensive against future regressions. Treat the raw value
+            // as its own bucket so we still throttle the source.
+            return 'ip:'.$clientIp;
+        }
+
+        if (16 === \strlen($packed)) {
+            return 'ipv6:'.bin2hex(substr($packed, 0, 8));
+        }
+
+        return 'ipv4:'.$clientIp;
     }
 
     private function rateLimitedResponse(RateLimit $limit): JsonResponse

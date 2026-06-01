@@ -65,6 +65,10 @@ export function ArchiveForm() {
 
         setIsSubmitting(true);
         setError(null);
+        // Clear any lingering rate-limit state from a prior 429 so a fresh
+        // attempt starts from a clean slate rather than carrying around a
+        // zeroed-out cooldown object that the UI no longer renders.
+        setRateLimit(null);
 
         try {
             const archive = await createArchive({
@@ -129,12 +133,18 @@ export function ArchiveForm() {
                 ) : null}
 
                 {isRateLimited && rateLimit ? (
-                    <div
-                        className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-                        role="status"
-                    >
-                        <p className="font-medium">{rateLimit.message}</p>
-                        <p className="mt-1 text-amber-800">
+                    <div className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        {/*
+                          role="alert" announces the message once when the
+                          banner appears. The countdown line below is
+                          aria-hidden so screen readers do not re-read the
+                          remaining seconds every tick — the visible number
+                          is still useful to sighted users.
+                        */}
+                        <p className="font-medium" role="alert">
+                            {rateLimit.message}
+                        </p>
+                        <p className="mt-1 text-amber-800" aria-hidden="true">
                             You can try again in {rateLimit.secondsRemaining}s.
                         </p>
                     </div>
@@ -148,7 +158,7 @@ export function ArchiveForm() {
                     type="button"
                 >
                     <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                    {submitButtonLabel(isSubmitting, isRateLimited, rateLimit?.secondsRemaining)}
+                    {submitButtonLabel(isSubmitting, rateLimit)}
                 </Button>
             </aside>
         </div>
@@ -160,17 +170,13 @@ interface RateLimitState {
     secondsRemaining: number;
 }
 
-function submitButtonLabel(
-    isSubmitting: boolean,
-    isRateLimited: boolean,
-    secondsRemaining: number | undefined,
-): string {
+function submitButtonLabel(isSubmitting: boolean, rateLimit: RateLimitState | null): string {
     if (isSubmitting) {
         return 'Creating archive…';
     }
 
-    if (isRateLimited && typeof secondsRemaining === 'number') {
-        return `Try again in ${secondsRemaining}s`;
+    if (rateLimit && rateLimit.secondsRemaining > 0) {
+        return `Try again in ${rateLimit.secondsRemaining}s`;
     }
 
     return 'Generate and download ZIP';

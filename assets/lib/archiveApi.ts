@@ -140,11 +140,15 @@ function parseRetryAfterHeader(value: string | null): number | undefined {
 }
 
 function clampRetrySeconds(value: number | undefined): number {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    // Missing or non-finite values fall back to a conservative 60s. Finite
+    // values are clamped to the documented 1-600s window so a malformed or
+    // zero Retry-After never re-enables the submit button instantly and a
+    // pathological large value can't lock the UI out indefinitely.
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
         return 60;
     }
 
-    return Math.min(Math.ceil(value), 600);
+    return Math.min(Math.max(1, Math.ceil(value)), 600);
 }
 
 function filenameFromDisposition(disposition: string | null): string {

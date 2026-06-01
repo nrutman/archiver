@@ -140,7 +140,7 @@ describe('ArchiveForm', () => {
         expect(clickSpy).toHaveBeenCalled();
     });
 
-    it('shows a cooldown banner, counts down, and resets the form when the cooldown ends', async () => {
+    it('shows a cooldown banner, counts down, resets the form, and recovers on a successful retry', async () => {
         // Drives the React effect with fake timers so the 3s countdown does
         // not actually elapse in real time. We use fireEvent rather than
         // userEvent here because userEvent's internal scheduling does not
@@ -148,24 +148,50 @@ describe('ArchiveForm', () => {
         vi.useFakeTimers();
 
         try {
-            vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-                new Response(
-                    JSON.stringify({
-                        error: {
-                            code: 'rate_limited',
-                            message: 'Too many archive requests from your IP.',
-                            retryAfterSeconds: 3,
+            // First submit is rate-limited; second submit (after the
+            // cooldown ends) succeeds and triggers a download.
+            const fetchMock = vi
+                .spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce(
+                    new Response(
+                        JSON.stringify({
+                            error: {
+                                code: 'rate_limited',
+                                message: 'Too many archive requests from your IP.',
+                                retryAfterSeconds: 3,
+                            },
+                        }),
+                        {
+                            status: 429,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Retry-After': '3',
+                            },
                         },
-                    }),
-                    {
-                        status: 429,
+                    ),
+                )
+                .mockResolvedValueOnce(
+                    new Response('zip', {
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Retry-After': '3',
+                            'Content-Disposition': 'attachment; filename=archive-recovered.zip',
                         },
-                    },
-                ),
-            );
+                        status: 200,
+                    }),
+                );
+
+            // Stub download plumbing so the success path can complete
+            // without jsdom throwing on URL.createObjectURL.
+            Object.defineProperty(URL, 'createObjectURL', {
+                configurable: true,
+                value: vi.fn(() => 'blob:test'),
+            });
+            Object.defineProperty(URL, 'revokeObjectURL', {
+                configurable: true,
+                value: vi.fn(),
+            });
+            const clickSpy = vi
+                .spyOn(HTMLAnchorElement.prototype, 'click')
+                .mockImplementation(() => undefined);
 
             render(<ArchiveForm />);
 
@@ -174,10 +200,13 @@ describe('ArchiveForm', () => {
             });
             fireEvent.click(screen.getByRole('button', { name: /generate and download zip/i }));
 
-            // Initial banner state: server message, 3-second countdown,
-            // submit button disabled. Flush the fetch promise + state update.
+            // Flush the fetch promise chain. createArchive awaits fetch,
+            // rateLimitErrorFromResponse, and response.clone().json(), so a
+            // single Promise.resolve() tick is not enough. Advancing fake
+            // timers by 0 also drains microtasks and is robust against
+            // additional awaits being inserted in the chain later.
             await act(async () => {
-                await Promise.resolve();
+                await vi.advanceTimersByTimeAsync(0);
             });
             expect(screen.getByText(/too many archive requests from your ip/i)).toBeInTheDocument();
             expect(screen.getByText(/try again in 3s\./i)).toBeInTheDocument();
@@ -205,6 +234,21 @@ describe('ArchiveForm', () => {
                 screen.queryByText(/too many archive requests from your ip/i),
             ).not.toBeInTheDocument();
             expect(screen.queryByText(/try again in/i)).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /generate and download zip/i }),
+            ).toBeEnabled();
+
+            // A fresh submit after the cooldown ends should succeed and
+            // fire the download anchor, with no rate-limit residue.
+            fireEvent.click(screen.getByRole('button', { name: /generate and download zip/i }));
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(clickSpy).toHaveBeenCalled();
+            expect(
+                screen.queryByText(/too many archive requests from your ip/i),
+            ).not.toBeInTheDocument();
             expect(
                 screen.getByRole('button', { name: /generate and download zip/i }),
             ).toBeEnabled();
