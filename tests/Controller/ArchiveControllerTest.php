@@ -197,6 +197,36 @@ final class ArchiveControllerTest extends WebTestCase
         self::assertSame('5', $response->headers->get('X-RateLimit-Limit'));
     }
 
+    public function testValidationErrorsStillConsumeTheRateLimitWindow(): void
+    {
+        // The controller consumes one token before validating, so an attacker
+        // cannot blast invalid requests to probe the endpoint without being
+        // throttled. Keep this property pinned: five rejected requests must
+        // be enough to exhaust the window for a subsequent valid request.
+        $client = static::createClient();
+        $remoteIp = '203.0.113.99';
+
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                [],
+                ['REMOTE_ADDR' => $remoteIp],
+            );
+            self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+        }
+
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('valid.txt', 'body')]],
+            ['REMOTE_ADDR' => $remoteIp],
+        );
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+    }
+
     public function testItRateLimitsIndependentlyPerClientIp(): void
     {
         $client = static::createClient();

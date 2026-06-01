@@ -43,6 +43,69 @@ final class CreateArchiveCommandTest extends KernelTestCase
         }
     }
 
+    public function testItWritesAnUnencryptedArchiveWhenNoPasswordIsProvided(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/plain.txt';
+        file_put_contents($sourcePath, 'no-secrets');
+
+        $outputPath = $workspace.'/out.zip';
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+            '--output' => $outputPath,
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $tester->getDisplay());
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($outputPath));
+
+        try {
+            self::assertSame('no-secrets', $zip->getFromName('plain.txt'));
+            // An unencrypted entry reports EM_NONE for its encryption method.
+            self::assertSame(
+                \ZipArchive::EM_NONE,
+                $zip->statName('plain.txt')['encryption_method'] ?? null,
+            );
+        } finally {
+            $zip->close();
+        }
+    }
+
+    public function testItOverwritesAnExistingOutputFileWhenForceIsPassed(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/alpha.txt';
+        file_put_contents($sourcePath, 'replacement-payload');
+
+        $outputPath = $workspace.'/out.zip';
+        file_put_contents($outputPath, 'placeholder-bytes');
+
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+            '--output' => $outputPath,
+            '--force' => true,
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $tester->getDisplay());
+
+        // The placeholder bytes must have been replaced by a real ZIP archive.
+        self::assertNotSame('placeholder-bytes', file_get_contents($outputPath));
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($outputPath));
+
+        try {
+            self::assertSame('replacement-payload', $zip->getFromName('alpha.txt'));
+        } finally {
+            $zip->close();
+        }
+    }
+
     public function testItRefusesToOverwriteAnExistingOutputFileWithoutForce(): void
     {
         $tester = $this->commandTester();
