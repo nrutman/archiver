@@ -1,0 +1,47 @@
+name: Lines Changed
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+
+permissions:
+    contents: read
+    pull-requests: write
+
+jobs:
+    lines-changed:
+        name: Post lines-changed summary
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Post lines-changed comment
+              uses: nrutman/lines-changed-gha@v3
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  default-group-label: '🏅 Source'
+                  ignore-whitespace: true
+                  file-groups: |
+                      - label: '🧪 Tests'
+                        patterns:
+                          - 'tests/**'
+                          - '**/*.test.ts'
+                          - '**/*.test.tsx'
+                        count: true
+                      - label: '📄 Documentation'
+                        patterns:
+                          - '**/*.md'
+                          - 'docs/**'
+                        count: false
+                      - label: '⚙️ Generated'
+                        patterns:
+                          - 'public/build/**'
+                          - 'config/reference.php'
+                        count: false
+                      - label: '📦 Lock Files'
+                        patterns:
+                          - 'composer.lock'
+                          - 'pnpm-lock.yaml'
+                          - 'symfony.lock'
+                        count: false
