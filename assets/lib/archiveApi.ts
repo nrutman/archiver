@@ -99,10 +99,12 @@ async function rateLimitErrorFromResponse(response: Response): Promise<RateLimit
     // Prefer the server-provided retry hint, then the Retry-After header, then
     // a conservative fallback. Some proxies strip JSON error bodies, so the
     // header-based path keeps the countdown working in those cases too.
-    const retryAfterSeconds = clampRetrySeconds(
-        (isErrorResponse(body) && typeof body.error.retryAfterSeconds === 'number'
+    const bodyRetry =
+        isErrorResponse(body) && typeof body.error.retryAfterSeconds === 'number'
             ? body.error.retryAfterSeconds
-            : undefined) ?? parseRetryAfterHeader(response.headers.get('Retry-After')),
+            : undefined;
+    const retryAfterSeconds = clampRetrySeconds(
+        bodyRetry ?? parseRetryAfterHeader(response.headers.get('Retry-After')),
     );
 
     return new RateLimitError(message, retryAfterSeconds);
@@ -116,9 +118,17 @@ async function safeJsonBody(response: Response): Promise<unknown> {
     }
 }
 
+/**
+ * Narrows `unknown` to the verified shape of an API error body.
+ *
+ * The predicate only promises what it actually checks at runtime
+ * (a string `error.message`). Callers that read other optional fields
+ * such as `retryAfterSeconds` are responsible for their own narrowing
+ * — see `rateLimitErrorFromResponse` for the existing `typeof` guard.
+ */
 function isErrorResponse(
     value: unknown,
-): value is { error: { message: string; retryAfterSeconds?: number; code?: string } } {
+): value is { error: Record<string, unknown> & { message: string } } {
     return (
         typeof value === 'object' &&
         value !== null &&

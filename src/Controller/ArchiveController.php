@@ -76,6 +76,13 @@ final class ArchiveController extends AbstractController
      * many billions of source addresses; bucketing at /128 would let a
      * client rotate addresses per request and trivially bypass the limit.
      *
+     * IPv4-mapped IPv6 addresses (`::ffff:a.b.c.d`, common when PHP serves
+     * on a dual-stack socket) are unmapped to their underlying IPv4 form
+     * before keying. Without this step every IPv4 client seen through a
+     * dual-stack listener would share one bucket because the upper 8 bytes
+     * of the mapped form are all zero, and a client seen sometimes as v4
+     * and sometimes as v4-mapped-v6 would get two independent buckets.
+     *
      * Falls back to a single shared bucket when the client IP is
      * unavailable, which is intentionally conservative: an unknown source
      * still counts toward the limit rather than being waved through. The
@@ -101,6 +108,12 @@ final class ArchiveController extends AbstractController
         }
 
         if (16 === \strlen($packed)) {
+            if (str_starts_with($packed, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff")) {
+                // IPv4-mapped IPv6 — unmap to the underlying IPv4 so the
+                // bucket matches the same client when seen directly as v4.
+                return 'ipv4:'.inet_ntop(substr($packed, 12));
+            }
+
             return 'ipv6:'.bin2hex(substr($packed, 0, 8));
         }
 

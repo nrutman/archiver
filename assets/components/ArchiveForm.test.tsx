@@ -208,7 +208,11 @@ describe('ArchiveForm', () => {
             await act(async () => {
                 await vi.advanceTimersByTimeAsync(0);
             });
-            expect(screen.getByText(/too many archive requests from your ip/i)).toBeInTheDocument();
+            // The message lives in both a permanent sr-only live region
+            // (for screen readers) and the visible amber banner (for
+            // sighted users), so we expect two matching nodes during the
+            // cooldown window.
+            expect(screen.getAllByText(/too many archive requests from your ip/i)).toHaveLength(2);
             expect(screen.getByText(/try again in 3s\./i)).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /try again in 3s/i })).toBeDisabled();
 
@@ -230,6 +234,9 @@ describe('ArchiveForm', () => {
             await act(async () => {
                 await vi.advanceTimersByTimeAsync(1000);
             });
+            // After cooldown the sr-only region renders an empty string and
+            // the visible banner unmounts, so the message text is no longer
+            // findable anywhere in the document.
             expect(
                 screen.queryByText(/too many archive requests from your ip/i),
             ).not.toBeInTheDocument();
@@ -254,6 +261,11 @@ describe('ArchiveForm', () => {
             ).toBeEnabled();
         } finally {
             vi.useRealTimers();
+            // Object.defineProperty stubs with a `value` descriptor are not
+            // restored by vi.restoreAllMocks(), so undo them here to keep
+            // the URL.* surface clean for later tests.
+            delete (URL as { createObjectURL?: unknown }).createObjectURL;
+            delete (URL as { revokeObjectURL?: unknown }).revokeObjectURL;
         }
     });
 });

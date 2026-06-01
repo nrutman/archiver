@@ -198,6 +198,138 @@ final class ArchiveControllerTest extends WebTestCase
         self::assertSame('0', $response->headers->get('X-RateLimit-Remaining'));
         self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('X-RateLimit-Reset'));
         self::assertGreaterThan(time(), (int) $response->headers->get('X-RateLimit-Reset'));
+        // Header and JSON body must agree on the retry hint so a future
+        // refactor cannot let them diverge (e.g. seconds vs milliseconds).
+        self::assertSame(
+            (string) $body['error']['retryAfterSeconds'],
+            $response->headers->get('Retry-After'),
+        );
+    }
+
+    public function testItCollapsesIpv6AddressesInTheSameSixtyFourToOneBucket(): void
+    {
+        // Two distinct /128 addresses inside the same /64 must share a
+        // bucket so a client cannot rotate addresses inside its allocation
+        // to bypass the limit.
+        $client = static::createClient();
+
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('a-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '2001:db8:1:1::1'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('over.txt', 'body')]],
+            ['REMOTE_ADDR' => '2001:db8:1:1::beef'],
+        );
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+    }
+
+    public function testItRateLimitsIpv6AddressesInDifferentSixtyFoursIndependently(): void
+    {
+        $client = static::createClient();
+
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('a-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '2001:db8:1:1::1'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        // A client in a different /64 must not inherit the first /64's window.
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('b.txt', 'body')]],
+            ['REMOTE_ADDR' => '2001:db8:2:2::1'],
+        );
+        self::assertResponseIsSuccessful('Different /64 prefixes must have independent rate-limit windows.');
+    }
+
+    public function testItUnmapsIpv4MappedIpv6AddressesToTheirIpv4Bucket(): void
+    {
+        // A client seen sometimes as plain IPv4 and sometimes as the
+        // IPv4-mapped IPv6 form (`::ffff:a.b.c.d`, common on dual-stack
+        // listeners) must hit the same bucket; without unmapping, the
+        // mapped form would also collapse every IPv4 client into one
+        // shared global bucket because the upper 8 bytes are all zero.
+        $client = static::createClient();
+
+        for ($i = 0; $i < 3; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('a-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '203.0.113.42'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        for ($i = 0; $i < 2; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('m-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '::ffff:203.0.113.42'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        // 3 + 2 = 5 — the next request from either form should trip the limit.
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('over.txt', 'body')]],
+            ['REMOTE_ADDR' => '203.0.113.42'],
+        );
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+    }
+
+    public function testItKeepsDistinctIpv4MappedIpv6AddressesInSeparateBuckets(): void
+    {
+        // Regression guard for the cycle-2 fix: before unmapping was added,
+        // every `::ffff:*` address collapsed to a single shared key
+        // because the upper 8 bytes are all zero. This test fails under
+        // that bug because the second client's first request would be a
+        // 429 instead of the expected success.
+        $client = static::createClient();
+
+        for ($i = 0; $i < 5; ++$i) {
+            $client->request(
+                'POST',
+                '/api/archives',
+                ['passwordEnabled' => 'false'],
+                ['files' => [$this->uploadedFile(sprintf('a-%d.txt', $i), 'body')]],
+                ['REMOTE_ADDR' => '::ffff:198.51.100.10'],
+            );
+            self::assertResponseIsSuccessful();
+        }
+
+        $client->request(
+            'POST',
+            '/api/archives',
+            ['passwordEnabled' => 'false'],
+            ['files' => [$this->uploadedFile('b.txt', 'body')]],
+            ['REMOTE_ADDR' => '::ffff:198.51.100.20'],
+        );
+        self::assertResponseIsSuccessful('Distinct IPv4-mapped IPv6 addresses must not share a bucket.');
     }
 
     public function testValidationErrorsStillConsumeTheRateLimitWindow(): void

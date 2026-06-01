@@ -132,19 +132,25 @@ export function ArchiveForm() {
                     </div>
                 ) : null}
 
+                {/*
+                  Permanent visually-hidden live region. Screen readers see
+                  the rate-limit message as a text-content change on this
+                  always-mounted node, which is more reliable across
+                  assistive technologies than announcing a freshly-inserted
+                  role="alert" subtree. The visible banner below carries
+                  the same message plus a sighted-only countdown.
+                */}
+                <p className="sr-only" role="status">
+                    {isRateLimited && rateLimit ? rateLimit.message : ''}
+                </p>
+
                 {isRateLimited && rateLimit ? (
-                    <div className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                        {/*
-                          role="alert" announces the message once when the
-                          banner appears. The countdown line below is
-                          aria-hidden so screen readers do not re-read the
-                          remaining seconds every tick — the visible number
-                          is still useful to sighted users.
-                        */}
-                        <p className="font-medium" role="alert">
-                            {rateLimit.message}
-                        </p>
-                        <p className="mt-1 text-amber-800" aria-hidden="true">
+                    <div
+                        aria-hidden="true"
+                        className="rounded-xl border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                    >
+                        <p className="font-medium">{rateLimit.message}</p>
+                        <p className="mt-1 text-amber-800">
                             You can try again in {rateLimit.secondsRemaining}s.
                         </p>
                     </div>
