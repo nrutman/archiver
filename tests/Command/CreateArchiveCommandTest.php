@@ -123,7 +123,10 @@ final class CreateArchiveCommandTest extends KernelTestCase
         ]);
 
         self::assertSame(Command::INVALID, $exitCode);
-        self::assertStringContainsString('Refusing to overwrite', $tester->getDisplay());
+        self::assertStringContainsString(
+            'Refusing to overwrite',
+            self::normalizeWhitespace($tester->getDisplay()),
+        );
         self::assertSame('placeholder', file_get_contents($outputPath));
     }
 
@@ -138,7 +141,18 @@ final class CreateArchiveCommandTest extends KernelTestCase
         ]);
 
         self::assertSame(Command::INVALID, $exitCode);
-        self::assertStringContainsString('does not exist', $tester->getDisplay());
+        self::assertStringContainsString('does not exist', self::normalizeWhitespace($tester->getDisplay()));
+    }
+
+    /**
+     * SymfonyStyle wraps error boxes to the terminal width, so a literal
+     * substring assertion can fail on narrower CI terminals (e.g. "does not"
+     * lands at end of line, "exist" on the next). Collapse all whitespace to
+     * single spaces so the assertion only depends on the words themselves.
+     */
+    private static function normalizeWhitespace(string $value): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 
     private function commandTester(): CommandTester
