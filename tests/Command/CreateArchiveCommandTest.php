@@ -182,6 +182,39 @@ final class CreateArchiveCommandTest extends KernelTestCase
         }
     }
 
+    public function testItDefaultsToZipCryptoWhenModeIsOmitted(): void
+    {
+        $tester = $this->commandTester();
+        $workspace = $this->makeWorkspace();
+
+        $sourcePath = $workspace.'/legacy.txt';
+        file_put_contents($sourcePath, 'compat-payload');
+
+        $outputPath = $workspace.'/out.zip';
+        $exitCode = $tester->execute([
+            'files' => [$sourcePath],
+            '--output' => $outputPath,
+            '--password' => 'compat-password-1234',
+            // --mode intentionally omitted to exercise the default.
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $tester->getDisplay());
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($outputPath));
+
+        try {
+            self::assertTrue($zip->setPassword('compat-password-1234'));
+            self::assertSame('compat-payload', $zip->getFromName('legacy.txt'));
+            self::assertSame(
+                \ZipArchive::EM_TRAD_PKWARE,
+                $zip->statName('legacy.txt')['encryption_method'] ?? null,
+            );
+        } finally {
+            $zip->close();
+        }
+    }
+
     public function testItErrorsOnUnsupportedEncryptionMode(): void
     {
         $tester = $this->commandTester();

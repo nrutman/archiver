@@ -20,7 +20,7 @@ export function ArchiveForm() {
     const [files, setFiles] = useState<SelectedFile[]>([]);
     const [passwordEnabled, setPasswordEnabled] = useState(true);
     const [password, setPassword] = useState(() => generatePassword());
-    const [encryptionMode, setEncryptionMode] = useState<EncryptionMode>('aes256');
+    const [encryptionMode, setEncryptionMode] = useState<EncryptionMode>('zipcrypto');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [rateLimit, setRateLimit] = useState<RateLimitState | null>(null);

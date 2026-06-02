@@ -8,12 +8,12 @@ The Archiver frontend is a thin client over a single HTTP endpoint. The same arc
 
 Streams a ZIP archive built from uploaded files. The request must be `multipart/form-data`.
 
-| Field             | Type                    | Required                    | Notes                                                                                                                                                            |
-| ----------------- | ----------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `files[]`         | file part               | yes                         | One file part per archive entry. Can be repeated; a single `files` part also works.                                                                              |
-| `passwordEnabled` | string `true` / `false` | yes                         | When `false` an unencrypted archive is produced.                                                                                                                 |
-| `password`        | string                  | when `passwordEnabled=true` | No null bytes, 255 characters or fewer. Send as UTF-8.                                                                                                           |
-| `encryptionMode`  | `aes256` or `zipcrypto` | no                          | Defaults to `aes256` when omitted. Ignored when `passwordEnabled=false`. `zipcrypto` is provided only for compatibility with legacy Windows tools and is weaker. |
+| Field             | Type                    | Required                    | Notes                                                                                                                                                                                                          |
+| ----------------- | ----------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `files[]`         | file part               | yes                         | One file part per archive entry. Can be repeated; a single `files` part also works.                                                                                                                            |
+| `passwordEnabled` | string `true` / `false` | yes                         | When `false` an unencrypted archive is produced.                                                                                                                                                               |
+| `password`        | string                  | when `passwordEnabled=true` | No null bytes, 255 characters or fewer. Send as UTF-8.                                                                                                                                                         |
+| `encryptionMode`  | `aes256` or `zipcrypto` | no                          | Defaults to `zipcrypto` when omitted, for maximum compatibility with native Windows tooling. Ignored when `passwordEnabled=false`. `zipcrypto` is weaker than `aes256`; pass `aes256` for stronger encryption. |
 
 #### Success (`200 OK`)
 
@@ -86,7 +86,7 @@ Options:
 | ------------------ | ------------------------------------------------------------------------------ |
 | `--output`, `-o`   | Required. Destination path for the ZIP file.                                   |
 | `--password`, `-p` | Encrypts the archive with the given password. Omit for an unencrypted archive. |
-| `--mode`, `-m`     | `aes256` (default) or `zipcrypto`. Only meaningful when `--password` is set.   |
+| `--mode`, `-m`     | `zipcrypto` (default) or `aes256`. Only meaningful when `--password` is set.   |
 | `--force`, `-f`    | Overwrite `--output` if it already exists.                                     |
 
 The command exits with code `0` on success, `2` on validation errors (e.g. missing or unreadable input file, unsupported encryption mode, missing `--output`, refusing to overwrite without `--force`, or input that exceeds the file-count / size limits), and `1` on unexpected failures such as the destination filesystem being unwritable.

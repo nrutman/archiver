@@ -128,22 +128,6 @@ export function PasswordControls({
                     <legend className="text-sm font-medium">Encryption</legend>
                     <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
                         <input
-                            checked={encryptionMode === 'aes256'}
-                            className="mt-1"
-                            disabled={disabled}
-                            name="encryptionMode"
-                            onChange={() => onEncryptionModeChange('aes256')}
-                            type="radio"
-                        />
-                        <span>
-                            <span className="block font-medium">Strong encryption</span>
-                            <span className="block text-muted-foreground">
-                                AES-256, requires 7-Zip, WinZip, Keka, or another modern ZIP tool.
-                            </span>
-                        </span>
-                    </label>
-                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
-                        <input
                             checked={encryptionMode === 'zipcrypto'}
                             className="mt-1"
                             disabled={disabled}
@@ -152,10 +136,27 @@ export function PasswordControls({
                             type="radio"
                         />
                         <span>
-                            <span className="block font-medium">Windows Explorer compatible</span>
+                            <span className="block font-medium">Maximum compatibility</span>
                             <span className="block text-muted-foreground">
-                                Opens natively in Windows Explorer, but uses weaker ZipCrypto
-                                protection.
+                                ZipCrypto opens natively in Windows Explorer and virtually every ZIP
+                                tool, but uses weaker encryption.
+                            </span>
+                        </span>
+                    </label>
+                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+                        <input
+                            checked={encryptionMode === 'aes256'}
+                            className="mt-1"
+                            disabled={disabled}
+                            name="encryptionMode"
+                            onChange={() => onEncryptionModeChange('aes256')}
+                            type="radio"
+                        />
+                        <span>
+                            <span className="block font-medium">Increased security</span>
+                            <span className="block text-muted-foreground">
+                                AES-256 is much stronger, but requires 7-Zip, WinZip, Keka, or
+                                another modern ZIP tool.
                             </span>
                         </span>
                     </label>
