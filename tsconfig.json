@@ -22,12 +22,6 @@
             "@/*": ["assets/*"]
         }
     },
-    "include": [
-        "assets",
-        "vite.config.ts",
-        "vitest.config.ts",
-        "vitest.setup.ts",
-        "tailwind.config.ts"
-    ],
+    "include": ["assets", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
     "references": []
 }
