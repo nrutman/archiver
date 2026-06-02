@@ -29,7 +29,7 @@ export function FileList({ disabled = false, files, onRemove }: FileListProps) {
     const totalBytes = files.reduce((sum, selectedFile) => sum + selectedFile.file.size, 0);
 
     return (
-        <div className="rounded-xl border bg-card shadow-sm">
+        <div className="rounded-xl border bg-card shadow-xs">
             <div className="flex items-center justify-between border-b px-4 py-3 text-sm">
                 <span className="font-medium">{files.length} selected files</span>
                 <span className="text-muted-foreground">{formatFileSize(totalBytes)}</span>

@@ -46,7 +46,7 @@ export function PasswordControls({
 
     return (
         <section
-            className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm"
+            className="space-y-4 rounded-2xl border bg-card p-5 shadow-xs"
             aria-labelledby="password-heading"
         >
             <div className="flex items-start gap-3">
@@ -78,7 +78,7 @@ export function PasswordControls({
                 </label>
                 <div className="flex">
                     <input
-                        className="h-10 min-w-0 flex-1 rounded-md rounded-r-none border border-input bg-background px-3 py-2 font-mono text-sm shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-10 min-w-0 flex-1 rounded-md rounded-r-none border border-input bg-background px-3 py-2 font-mono text-sm shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={disabled || !passwordEnabled}
                         id="archive-password"
                         onChange={(event) => updatePassword(event.currentTarget.value)}
@@ -126,7 +126,7 @@ export function PasswordControls({
             {passwordEnabled ? (
                 <fieldset className="space-y-3">
                     <legend className="text-sm font-medium">Encryption</legend>
-                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-60">
                         <input
                             checked={encryptionMode === 'zipcrypto'}
                             className="mt-1"
@@ -143,7 +143,7 @@ export function PasswordControls({
                             </span>
                         </span>
                     </label>
-                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+                    <label className="flex cursor-pointer gap-3 rounded-xl border p-3 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-60">
                         <input
                             checked={encryptionMode === 'aes256'}
                             className="mt-1"
