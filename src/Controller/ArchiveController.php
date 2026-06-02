@@ -153,7 +153,7 @@ final class ArchiveController extends AbstractController
     {
         $passwordEnabled = $request->request->getBoolean('passwordEnabled');
         $encryptionMode = $passwordEnabled
-            ? ArchiveEncryptionMode::fromFormValue($request->request->getString('encryptionMode', ArchiveEncryptionMode::Aes256->value))
+            ? ArchiveEncryptionMode::fromFormValue($request->request->getString('encryptionMode', ArchiveEncryptionMode::ZipCrypto->value))
             : ArchiveEncryptionMode::None;
 
         return new ArchiveCreationRequest(

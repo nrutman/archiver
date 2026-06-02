@@ -117,6 +117,35 @@ final class ArchiveControllerTest extends WebTestCase
         yield 'Windows-compatible ZipCrypto' => ['zipcrypto', \ZipArchive::EM_TRAD_PKWARE];
     }
 
+    public function testItDefaultsToZipCryptoWhenNoEncryptionModeIsProvided(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/archives', [
+            'passwordEnabled' => 'true',
+            'password' => 'correct-horse-123-battery-456-staple',
+        ], [
+            'files' => [$this->uploadedFile('secret.txt', 'classified')],
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $zipPath = $this->writeResponseZip($client);
+
+        try {
+            $zip = new \ZipArchive();
+            self::assertTrue($zip->open($zipPath));
+            self::assertTrue($zip->setPassword('correct-horse-123-battery-456-staple'));
+            self::assertSame('classified', $zip->getFromName('secret.txt'));
+            self::assertSame(
+                \ZipArchive::EM_TRAD_PKWARE,
+                $zip->statName('secret.txt')['encryption_method'] ?? null,
+            );
+            $zip->close();
+        } finally {
+            @unlink($zipPath);
+        }
+    }
+
     public function testItReturnsValidationErrorsForMissingFiles(): void
     {
         $client = static::createClient();
