@@ -56,8 +56,8 @@ final class CreateArchiveCommand extends Command
                 'mode',
                 'm',
                 InputOption::VALUE_REQUIRED,
-                'Encryption mode when a password is provided: aes256 (default) or zipcrypto.',
-                'aes256',
+                'Encryption mode when a password is provided: zipcrypto (default) or aes256.',
+                'zipcrypto',
             )
             ->addOption(
                 'force',

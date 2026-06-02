@@ -83,7 +83,7 @@ describe('ArchiveForm', () => {
         expect(screen.getByLabelText(/archive password/i)).toBeDisabled();
         expect(screen.getByRole('button', { name: /copy password/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /generate a new password/i })).toBeDisabled();
-        expect(screen.getByRole('radio', { name: /strong encryption/i })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: /maximum compatibility/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /remove secret.txt/i })).toBeDisabled();
 
         resolveFetch(new Response('zip', { status: 200 }));
@@ -124,7 +124,10 @@ describe('ArchiveForm', () => {
         );
         await user.clear(screen.getByDisplayValue(/-/));
         await user.type(screen.getByRole('textbox'), 'custom-password');
-        fireEvent.click(screen.getByRole('radio', { name: /windows explorer compatible/i }));
+        // ZipCrypto is the default for maximum Windows compatibility; switch to
+        // AES-256 to exercise the opt-in stronger-encryption path.
+        expect(screen.getByRole('radio', { name: /maximum compatibility/i })).toBeChecked();
+        fireEvent.click(screen.getByRole('radio', { name: /increased security/i }));
         await user.click(screen.getByRole('button', { name: /generate and download zip/i }));
 
         await waitFor(() =>
@@ -135,9 +138,49 @@ describe('ArchiveForm', () => {
         expect(body).toBeInstanceOf(FormData);
         expect((body as FormData).get('passwordEnabled')).toBe('true');
         expect((body as FormData).get('password')).toBe('custom-password');
-        expect((body as FormData).get('encryptionMode')).toBe('zipcrypto');
+        expect((body as FormData).get('encryptionMode')).toBe('aes256');
         expect((body as FormData).getAll('files[]')).toHaveLength(1);
         expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('submits the default zipcrypto mode when the encryption choice is untouched', async () => {
+        const user = userEvent.setup();
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+            new Response('zip', {
+                headers: {
+                    'Content-Disposition': 'attachment; filename=archive-test.zip',
+                },
+                status: 200,
+            }),
+        );
+        Object.defineProperty(URL, 'createObjectURL', {
+            configurable: true,
+            value: vi.fn(() => 'blob:test'),
+        });
+        Object.defineProperty(URL, 'revokeObjectURL', {
+            configurable: true,
+            value: vi.fn(),
+        });
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+        render(<ArchiveForm />);
+
+        await user.upload(
+            screen.getByLabelText(/drop files here/i),
+            new File(['secret'], 'secret.txt'),
+        );
+        // No interaction with the encryption radios: the submitted payload must
+        // carry the ZipCrypto default so Windows Explorer users get a readable
+        // archive without opting into anything.
+        await user.click(screen.getByRole('button', { name: /generate and download zip/i }));
+
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith('/api/archives', expect.any(Object)),
+        );
+        const [, init] = fetchMock.mock.calls[0];
+        const body = init?.body;
+        expect(body).toBeInstanceOf(FormData);
+        expect((body as FormData).get('encryptionMode')).toBe('zipcrypto');
     });
 
     it('shows a cooldown banner, counts down, resets the form, and recovers on a successful retry', async () => {

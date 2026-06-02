@@ -10,11 +10,13 @@ enum ArchiveEncryptionMode: string
 
     /**
      * Creates an encryption mode from the API form value.
+     *
+     * A null, empty, or whitespace-only value defaults to ZipCrypto.
      */
     public static function fromFormValue(?string $value): self
     {
         if (null === $value || '' === trim($value)) {
-            return self::Aes256;
+            return self::ZipCrypto;
         }
 
         return match (strtolower(trim($value))) {
