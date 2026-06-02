@@ -14,12 +14,12 @@
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-zip": "*",
-        "pentatrion/vite-bundle": "^8.2",
+        "pentatrion/vite-bundle": "^8.2.4",
         "symfony/asset": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
         "symfony/filesystem": "7.4.*",
-        "symfony/flex": "^2.10",
+        "symfony/flex": "^2.11",
         "symfony/framework-bundle": "7.4.*",
         "symfony/rate-limiter": "7.4.*",
         "symfony/runtime": "7.4.*",
@@ -27,9 +27,9 @@
         "symfony/yaml": "7.4.*"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.95.2",
+        "friendsofphp/php-cs-fixer": "^3.95.3",
         "phpstan/phpstan": "^2.2.1",
-        "phpstan/phpstan-symfony": "^2.0.18",
+        "phpstan/phpstan-symfony": "^2.0.19",
         "phpunit/phpunit": "^12.5.28",
         "symfony/browser-kit": "7.4.*",
         "symfony/css-selector": "7.4.*"
