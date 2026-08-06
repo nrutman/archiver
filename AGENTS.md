@@ -15,6 +15,12 @@ Before changing files in a tree, read all `README.md` and `CONTRIBUTING.md` file
 
 All PRs should be squash-merged into `main`.
 
+## Dependency updates
+
+Only update to package releases that are at least three days old. Keep the pnpm
+`minimumReleaseAge` setting aligned with this policy, and verify release dates
+for ecosystems without an equivalent package-manager safeguard.
+
 ## Current architecture
 
 - Symfony 7.4 / PHP 8.3+ backend.
