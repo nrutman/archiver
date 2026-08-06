@@ -1,0 +1,30 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "react"],
+    "categories": {
+        "correctness": "error"
+    },
+    "rules": {
+        "react/exhaustive-deps": "warn",
+        "react/only-export-components": ["warn", { "allowConstantExport": true }],
+        "react/rules-of-hooks": "error"
+    },
+    "env": {
+        "builtin": true,
+        "browser": true,
+        "node": true
+    },
+    "overrides": [
+        {
+            "files": ["**/*.test.{ts,tsx}"],
+            "env": {
+                "vitest": true
+            }
+        }
+    ],
+    "ignorePatterns": ["public/build/**", "var/**", "vendor/**", "node_modules/**", "coverage/**"],
+    "options": {
+        "typeAware": true,
+        "maxWarnings": 0
+    }
+}

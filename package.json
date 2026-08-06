@@ -3,11 +3,14 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
+    "engines": {
+        "node": "22.23.2"
+    },
     "scripts": {
         "dev": "vite --host 127.0.0.1",
         "build": "tsc --noEmit && vite build",
         "typecheck": "tsc --noEmit",
-        "lint": "eslint . --max-warnings=0",
+        "lint": "oxlint . --deny-warnings",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "test": "vitest run",
