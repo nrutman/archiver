@@ -34,7 +34,7 @@
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.2",
         "@vitest/coverage-v8": "^4.1.8",
-        "jsdom": "^29.1.1",
+        "jsdom": "^30.0.1",
         "oxlint": "^1.77.0",
         "oxlint-tsgolint": "^7.0.2001",
         "postcss": "^8.5.25",
