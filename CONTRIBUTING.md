@@ -17,7 +17,7 @@ Because production may not have the frontend toolchain, `public/build` is commit
 ## Setup
 
 ```bash
-fnm use
+fnm use --install-if-missing
 make setup
 ```
 

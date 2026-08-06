@@ -29,7 +29,7 @@ the expected Node.js release automatically. Enable fnm's shell integration,
 then select the repository version before setup:
 
 ```bash
-fnm use
+fnm use --install-if-missing
 ```
 
 ## Local setup
