@@ -7,6 +7,7 @@
     "rules": {
         "react/exhaustive-deps": "warn",
         "react/only-export-components": ["warn", { "allowConstantExport": true }],
+        "react/react-compiler": "error",
         "react/rules-of-hooks": "error"
     },
     "env": {
