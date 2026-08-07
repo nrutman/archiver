@@ -79,7 +79,7 @@ Type-aware rules run through `oxlint-tsgolint`.
 Before serving the app, configure production environment values through the host, an untracked `.env.local`, or Symfony's optimized environment dump. On a fresh checkout, install Composer dependencies first so Symfony's console is available:
 
 ```bash
-composer install --no-dev --optimize-autoloader
+APP_ENV=prod APP_DEBUG=0 composer install --no-dev --optimize-autoloader
 php bin/console app:env:generate-local --app-env=prod --default-uri=https://your-domain.example
 ```
 

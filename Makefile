@@ -49,13 +49,13 @@ build:
 	APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG) php bin/console cache:clear
 
 production-update:
-	composer install --no-dev --optimize-autoloader
-	APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG) php bin/console cache:clear
+	APP_ENV=prod APP_DEBUG=0 composer install --no-dev --optimize-autoloader
+	APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
 
 production-update-with-node:
-	composer install --no-dev --optimize-autoloader
+	APP_ENV=prod APP_DEBUG=0 composer install --no-dev --optimize-autoloader
 	pnpm install --frozen-lockfile
-	$(MAKE) build APP_ENV=$(APP_ENV) APP_DEBUG=$(APP_DEBUG)
+	$(MAKE) build APP_ENV=prod APP_DEBUG=0
 
 format:
 	composer format
