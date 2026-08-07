@@ -17,8 +17,11 @@ Because production may not have the frontend toolchain, `public/build` is commit
 ## Setup
 
 ```bash
+fnm use --install-if-missing
 make setup
 ```
+
+The repository's `.node-version` pins Node.js 22.23.2 for fnm and CI.
 
 ## Development servers
 
@@ -44,9 +47,14 @@ make frontend-check
 Or run targeted checks:
 
 ```bash
+pnpm lint
+pnpm typecheck
 composer check
 make check-built-assets
 ```
+
+`pnpm lint` runs Oxlint with type-aware TypeScript rules and the native React
+plugin.
 
 ## Testing expectations
 

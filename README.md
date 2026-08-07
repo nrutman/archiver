@@ -21,6 +21,17 @@ Production servers only need the PHP runtime because built frontend assets are c
 
 Development machines and CI also need the Node-based frontend toolchain to run, test, and rebuild the frontend; day-to-day commands are wrapped by `make`.
 
+- Node.js 22.23.2 (pinned in `.node-version`)
+- pnpm 10.33.2
+
+[`fnm`](https://github.com/Schniz/fnm) reads `.node-version` and can switch to
+the expected Node.js release automatically. Enable fnm's shell integration,
+then select the repository version before setup:
+
+```bash
+fnm use --install-if-missing
+```
+
 ## Local setup
 
 ```bash
@@ -53,10 +64,15 @@ make frontend-check
 Useful targeted commands:
 
 ```bash
+pnpm lint
+pnpm typecheck
 composer check
 make check-built-assets
 php bin/console app:doctor
 ```
+
+Frontend linting uses Oxlint with its native TypeScript and React plugins.
+Type-aware rules run through `oxlint-tsgolint`.
 
 ## Production build
 

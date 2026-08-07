@@ -15,10 +15,18 @@ Before changing files in a tree, read all `README.md` and `CONTRIBUTING.md` file
 
 All PRs should be squash-merged into `main`.
 
+## Dependency updates
+
+Only update to package releases that are at least three days old. Keep the pnpm
+`minimumReleaseAge` setting aligned with this policy, and verify release dates
+for ecosystems without an equivalent package-manager safeguard.
+
 ## Current architecture
 
 - Symfony 7.4 / PHP 8.3+ backend.
 - React / TypeScript / Vite frontend.
+- Node.js 22.23.2, selected through fnm's `.node-version` support.
+- Oxlint with type-aware TypeScript and React rules.
 - Tailwind CSS with shadcn-compatible UI primitives.
 - Built frontend assets under `public/build` are committed so production hosts do not need Node.js.
 - No database is planned for the core flow. Per-IP rate-limit state is persisted to a filesystem cache pool under `var/cache/<env>/pools/` rather than a database.

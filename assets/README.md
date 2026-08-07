@@ -17,7 +17,9 @@ Shared UI primitives live under `assets/components/ui`. The structure is compati
 
 ## Checks
 
-Run frontend checks and verify committed build assets with:
+Oxlint handles JavaScript and TypeScript linting, including type-aware rules
+and the native React plugin. Run all frontend checks and verify committed build
+assets with:
 
 ```bash
 make frontend-check
