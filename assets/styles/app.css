@@ -1,4 +1,8 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
+
+/* Exclude committed build output and tooling artifacts from utility discovery. */
+@source '../';
+@source '../../templates';
 
 @custom-variant dark (&:is(.dark *));
 
