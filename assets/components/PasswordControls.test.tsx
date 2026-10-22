@@ -37,7 +37,10 @@ describe('PasswordControls', () => {
         );
     });
 
-    it('disables the copy button when password protection is disabled', () => {
+    it.each([
+        { name: 'protection is disabled', passwordEnabled: false, password: 'secret' },
+        { name: 'password is empty', passwordEnabled: true, password: '' },
+    ])('disables the copy button when $name', ({ passwordEnabled, password }) => {
         render(
             <PasswordControls
                 encryptionMode="aes256"
@@ -45,8 +48,8 @@ describe('PasswordControls', () => {
                 onPasswordChange={vi.fn()}
                 onPasswordEnabledChange={vi.fn()}
                 onRegeneratePassword={vi.fn()}
-                password="giant-cheetah-284-upstairs-199"
-                passwordEnabled={false}
+                password={password}
+                passwordEnabled={passwordEnabled}
             />,
         );
 

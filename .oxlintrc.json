@@ -7,7 +7,19 @@
     "rules": {
         "react/exhaustive-deps": "warn",
         "react/only-export-components": ["warn", { "allowConstantExport": true }],
-        "react/react-compiler": "error",
+        "react/error-boundaries": "error",
+        "react/globals": "error",
+        "react/hooks": "error",
+        "react/immutability": "error",
+        "react/incompatible-library": "error",
+        "react/preserve-manual-memoization": "error",
+        "react/purity": "error",
+        "react/refs": "error",
+        "react/set-state-in-effect": "error",
+        "react/set-state-in-render": "error",
+        "react/static-components": "error",
+        "react/unsupported-syntax": "error",
+        "react/use-memo": "error",
         "react/rules-of-hooks": "error"
     },
     "env": {

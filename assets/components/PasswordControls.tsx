@@ -88,7 +88,7 @@ export function PasswordControls({
                     <Button
                         aria-label="Copy password"
                         className="h-10 rounded-none border-l-0 px-3"
-                        disabled={disabled || !passwordEnabled || password.length === 0}
+                        disabled={!passwordEnabled || password.length === 0}
                         onClick={() => void copyPassword()}
                         title="Copy password"
                         type="button"
