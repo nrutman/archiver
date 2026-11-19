@@ -31,6 +31,24 @@ final class ArchiveControllerTest extends WebTestCase
         yield 'not an integer' => ['abc'];
     }
 
+    public function testItRejectsCountsAboveTheEffectiveHttpLimit(): void
+    {
+        $client = static::createClient();
+        $maxFiles = min((int) self::getContainer()->getParameter('archiver.max_files'), (int) ini_get('max_file_uploads'));
+        $file = $this->uploadedFile('one.txt', 'one');
+
+        try {
+            $client->request('POST', '/api/archives', ['passwordEnabled' => 'false'], [
+                'files' => array_fill(0, $maxFiles + 1, $file),
+            ]);
+
+            self::assertResponseStatusCodeSame(400);
+            self::assertStringContainsString(sprintf('Upload at most %d files.', $maxFiles), (string) $client->getResponse()->getContent());
+        } finally {
+            unlink($file->getPathname());
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

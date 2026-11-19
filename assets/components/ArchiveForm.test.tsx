@@ -34,6 +34,17 @@ describe('ArchiveForm', () => {
         expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeDisabled();
     });
 
+    it('counts files already selected when adding another batch', async () => {
+        const user = userEvent.setup();
+        render(<ArchiveForm maxFiles={1} />);
+        const input = screen.getByLabelText(/drop files here/i);
+        await user.upload(input, new File(['one'], 'one.txt'));
+        await user.upload(input, new File(['two'], 'two.txt'));
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Upload at most 1 files.');
+        expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeDisabled();
+    });
+
     it('adds files in multiple batches and removes selected files', async () => {
         const user = userEvent.setup();
         render(<ArchiveForm maxFiles={25} />);
