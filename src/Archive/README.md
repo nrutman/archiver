@@ -22,3 +22,5 @@ Every encrypted file entry must call `ZipArchive::setEncryptionName()` after bei
 ## Validation
 
 `ArchiveLimits` enforces configured file count and size limits before ZIP creation. Controllers should translate `ArchiveValidationException` into a user-facing `400` response.
+
+`HttpUploadLimits` caps browser uploads at the lower of `ARCHIVER_MAX_FILES` and PHP's `max_file_uploads`. The homepage supplies that count to the browser, and the HTTP endpoint enforces it. Browser requests also send `fileCount` so a truncated upload fails rather than returning an incomplete ZIP. API clients should include `fileCount` for the same protection. CLI archives keep the configured application limit because their inputs do not pass through PHP's multipart upload parser.

@@ -14,5 +14,6 @@ final class HomeControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertResponseHeaderSame('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         self::assertSelectorExists('#archiver-root');
+        self::assertSelectorExists(sprintf('#archiver-root[data-max-files="%d"]', min(25, (int) ini_get('max_file_uploads'))));
     }
 }

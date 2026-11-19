@@ -16,7 +16,7 @@ import { generatePassword } from '@/lib/passwordGenerator';
 /**
  * Complete browser-side archive creation workflow.
  */
-export function ArchiveForm() {
+export function ArchiveForm({ maxFiles }: { maxFiles: number }) {
     const [files, setFiles] = useState<SelectedFile[]>([]);
     const [passwordEnabled, setPasswordEnabled] = useState(true);
     const [password, setPassword] = useState(() => generatePassword());
@@ -40,8 +40,13 @@ export function ArchiveForm() {
     }, [rateLimit]);
 
     const isRateLimited = rateLimit !== null && rateLimit.secondsRemaining > 0;
+    const fileLimitError =
+        files.length > maxFiles
+            ? `Upload at most ${maxFiles} files. Remove files to continue.`
+            : null;
     const canSubmit =
         files.length > 0 &&
+        !fileLimitError &&
         (!passwordEnabled || password.trim().length > 0) &&
         !isSubmitting &&
         !isRateLimited;
@@ -100,6 +105,7 @@ export function ArchiveForm() {
     return (
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <section className="space-y-4">
+                <p className="text-sm text-muted-foreground">Up to {maxFiles} files per archive.</p>
                 <FileDropzone disabled={isSubmitting} onFilesAdded={addFiles} />
                 <FileList
                     disabled={isSubmitting}
@@ -124,12 +130,12 @@ export function ArchiveForm() {
                     passwordEnabled={passwordEnabled}
                 />
 
-                {error ? (
+                {fileLimitError || error ? (
                     <div
                         className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                         role="alert"
                     >
-                        {error}
+                        {fileLimitError || error}
                     </div>
                 ) : null}
 

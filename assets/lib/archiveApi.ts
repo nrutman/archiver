@@ -39,6 +39,7 @@ export async function createArchive(input: CreateArchiveInput): Promise<ArchiveD
     }
 
     formData.append('passwordEnabled', String(input.passwordEnabled));
+    formData.append('fileCount', String(input.files.length));
     if (input.passwordEnabled) {
         formData.append('password', input.password);
         formData.append('encryptionMode', input.encryptionMode);

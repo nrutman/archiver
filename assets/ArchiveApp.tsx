@@ -3,7 +3,7 @@ import { ArchiveForm } from '@/components/ArchiveForm';
 /**
  * Top-level product shell for the Archiver frontend.
  */
-export function ArchiveApp() {
+export function ArchiveApp({ maxFiles }: { maxFiles: number }) {
     return (
         <main className="mx-auto min-h-screen max-w-6xl px-6 py-10 sm:py-14">
             <section className="mb-8 space-y-3 text-center">
@@ -15,7 +15,7 @@ export function ArchiveApp() {
                 </p>
             </section>
 
-            <ArchiveForm />
+            <ArchiveForm maxFiles={maxFiles} />
         </main>
     );
 }

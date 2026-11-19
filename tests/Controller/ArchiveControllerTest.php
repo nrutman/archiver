@@ -11,6 +11,26 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ArchiveControllerTest extends WebTestCase
 {
+    #[DataProvider('invalidFileCounts')]
+    public function testItRejectsIncompleteOrInvalidUploadCounts(string $count): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/api/archives', ['passwordEnabled' => 'false', 'fileCount' => $count], [
+            'files' => [$this->uploadedFile('one.txt', 'one')],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertStringContainsString('Some selected files did not arrive', (string) $client->getResponse()->getContent());
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function invalidFileCounts(): iterable
+    {
+        yield 'truncated upload' => ['2'];
+        yield 'negative' => ['-1'];
+        yield 'not an integer' => ['abc'];
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,6 +55,7 @@ final class ArchiveControllerTest extends WebTestCase
 
         $client->request('POST', '/api/archives', [
             'passwordEnabled' => 'false',
+            'fileCount' => '2',
         ], [
             'files' => $files,
         ]);

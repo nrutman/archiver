@@ -206,7 +206,7 @@ final class DoctorCommand extends Command
     {
         $maxFileUploads = (int) ini_get('max_file_uploads');
         if ($maxFileUploads > 0 && $maxFileUploads < $this->maxFiles) {
-            $warnings[] = sprintf('PHP max_file_uploads is %d, below ARCHIVER_MAX_FILES=%d.', $maxFileUploads, $this->maxFiles);
+            $warnings[] = sprintf('PHP max_file_uploads is %d, below ARCHIVER_MAX_FILES=%d. Browser uploads are limited to %d files.', $maxFileUploads, $this->maxFiles, $maxFileUploads);
         }
 
         $uploadMaxFilesize = $this->iniBytes('upload_max_filesize');
