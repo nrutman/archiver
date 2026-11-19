@@ -7,6 +7,19 @@ afterEach(() => {
 });
 
 describe('archiveApi', () => {
+    it('sends the selected file count to detect truncated uploads', async () => {
+        const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('zip'));
+        await createArchive({
+            files: [new File(['one'], 'one.txt')],
+            passwordEnabled: false,
+            password: '',
+            encryptionMode: 'zipcrypto',
+        });
+
+        const body = fetch.mock.calls[0]?.[1]?.body as FormData;
+        expect(body.get('fileCount')).toBe('1');
+    });
+
     it('normalizes downloaded archive filenames to zip files', async () => {
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(
             new Response('zip', {

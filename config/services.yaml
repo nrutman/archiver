@@ -24,6 +24,10 @@ services:
     App\:
         resource: '../src/'
 
+    App\Archive\HttpUploadLimits:
+        arguments:
+            $maxFiles: '%archiver.max_files%'
+
     App\Archive\ArchiveLimits:
         arguments:
             $maxFiles: '%archiver.max_files%'

@@ -6,6 +6,7 @@ use App\Archive\ArchiveCreationRequest;
 use App\Archive\ArchiveCreationService;
 use App\Archive\ArchiveEncryptionMode;
 use App\Archive\ArchiveValidationException;
+use App\Archive\HttpUploadLimits;
 use App\TemporaryStorage\TemporaryWorkspace;
 use App\TemporaryStorage\TemporaryWorkspaceFactory;
 use Psr\Log\LoggerInterface;
@@ -27,6 +28,7 @@ final class ArchiveController extends AbstractController
         private readonly TemporaryWorkspaceFactory $workspaceFactory,
         private readonly RateLimiterFactoryInterface $archiveCreateLimiter,
         private readonly LoggerInterface $logger,
+        private readonly HttpUploadLimits $uploadLimits,
     ) {
     }
 
@@ -151,13 +153,26 @@ final class ArchiveController extends AbstractController
 
     private function requestFromHttpRequest(Request $request): ArchiveCreationRequest
     {
+        $files = $this->uploadedFiles($request);
+        if (count($files) > $this->uploadLimits->maxFiles()) {
+            throw new ArchiveValidationException(sprintf('Upload at most %d files.', $this->uploadLimits->maxFiles()));
+        }
+
+        // PHP can discard excess multipart files before Symfony receives them.
+        if ($request->request->has('fileCount')) {
+            $expectedCount = filter_var($request->request->get('fileCount'), \FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if (false === $expectedCount || $expectedCount !== count($files)) {
+                throw new ArchiveValidationException('Some selected files did not arrive. Refresh the page and select your files again.');
+            }
+        }
+
         $passwordEnabled = $request->request->getBoolean('passwordEnabled');
         $encryptionMode = $passwordEnabled
             ? ArchiveEncryptionMode::fromFormValue($request->request->getString('encryptionMode', ArchiveEncryptionMode::ZipCrypto->value))
             : ArchiveEncryptionMode::None;
 
         return new ArchiveCreationRequest(
-            $this->uploadedFiles($request),
+            $files,
             $encryptionMode,
             $request->request->getString('password'),
         );

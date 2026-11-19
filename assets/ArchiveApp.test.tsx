@@ -5,7 +5,7 @@ import { ArchiveApp } from './ArchiveApp';
 
 describe('ArchiveApp', () => {
     it('renders the archive creation workflow', () => {
-        render(<ArchiveApp />);
+        render(<ArchiveApp maxFiles={20} />);
 
         expect(
             screen.getByRole('heading', { name: /create password-protected zip archives/i }),

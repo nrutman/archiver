@@ -11,6 +11,44 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ArchiveControllerTest extends WebTestCase
 {
+    #[DataProvider('invalidFileCounts')]
+    public function testItRejectsIncompleteOrInvalidUploadCounts(string $count): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/api/archives', ['passwordEnabled' => 'false', 'fileCount' => $count], [
+            'files' => [$this->uploadedFile('one.txt', 'one')],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertStringContainsString('Some selected files did not arrive', (string) $client->getResponse()->getContent());
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function invalidFileCounts(): iterable
+    {
+        yield 'truncated upload' => ['2'];
+        yield 'negative' => ['-1'];
+        yield 'not an integer' => ['abc'];
+    }
+
+    public function testItRejectsCountsAboveTheEffectiveHttpLimit(): void
+    {
+        $client = static::createClient();
+        $maxFiles = min((int) self::getContainer()->getParameter('archiver.max_files'), (int) ini_get('max_file_uploads'));
+        $file = $this->uploadedFile('one.txt', 'one');
+
+        try {
+            $client->request('POST', '/api/archives', ['passwordEnabled' => 'false'], [
+                'files' => array_fill(0, $maxFiles + 1, $file),
+            ]);
+
+            self::assertResponseStatusCodeSame(400);
+            self::assertStringContainsString(sprintf('Upload at most %d files.', $maxFiles), (string) $client->getResponse()->getContent());
+        } finally {
+            unlink($file->getPathname());
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,6 +73,7 @@ final class ArchiveControllerTest extends WebTestCase
 
         $client->request('POST', '/api/archives', [
             'passwordEnabled' => 'false',
+            'fileCount' => '2',
         ], [
             'files' => $files,
         ]);

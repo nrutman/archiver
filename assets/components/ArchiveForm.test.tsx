@@ -9,9 +9,45 @@ afterEach(() => {
 });
 
 describe('ArchiveForm', () => {
+    it('blocks files above the server limit until extra files are removed', async () => {
+        const user = userEvent.setup();
+        render(<ArchiveForm maxFiles={1} />);
+        await user.upload(screen.getByLabelText(/drop files here/i), [
+            new File(['one'], 'one.txt'),
+            new File(['two'], 'two.txt'),
+        ]);
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Upload at most 1 files.');
+        expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeDisabled();
+
+        await user.click(screen.getByRole('button', { name: /remove two.txt/i }));
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeEnabled();
+    });
+
+    it('disables submission when the server allows no uploads', async () => {
+        const user = userEvent.setup();
+        render(<ArchiveForm maxFiles={0} />);
+        await user.upload(screen.getByLabelText(/drop files here/i), new File(['one'], 'one.txt'));
+
+        expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeDisabled();
+    });
+
+    it('counts files already selected when adding another batch', async () => {
+        const user = userEvent.setup();
+        render(<ArchiveForm maxFiles={1} />);
+        const input = screen.getByLabelText(/drop files here/i);
+        await user.upload(input, new File(['one'], 'one.txt'));
+        await user.upload(input, new File(['two'], 'two.txt'));
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Upload at most 1 files.');
+        expect(screen.getByRole('button', { name: /generate and download zip/i })).toBeDisabled();
+    });
+
     it('adds files in multiple batches and removes selected files', async () => {
         const user = userEvent.setup();
-        render(<ArchiveForm />);
+        render(<ArchiveForm maxFiles={25} />);
 
         const input = screen.getByLabelText(/drop files here/i);
         await user.upload(input, new File(['one'], 'one.txt', { type: 'text/plain' }));
@@ -36,7 +72,7 @@ describe('ArchiveForm', () => {
         });
 
         try {
-            render(<ArchiveForm />);
+            render(<ArchiveForm maxFiles={25} />);
 
             await user.upload(
                 screen.getByLabelText(/drop files here/i),
@@ -70,7 +106,7 @@ describe('ArchiveForm', () => {
         });
         vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
-        render(<ArchiveForm />);
+        render(<ArchiveForm maxFiles={25} />);
 
         await user.upload(
             screen.getByLabelText(/drop files here/i),
@@ -119,7 +155,7 @@ describe('ArchiveForm', () => {
             .spyOn(HTMLAnchorElement.prototype, 'click')
             .mockImplementation(() => undefined);
 
-        render(<ArchiveForm />);
+        render(<ArchiveForm maxFiles={25} />);
 
         await user.upload(
             screen.getByLabelText(/drop files here/i),
@@ -166,7 +202,7 @@ describe('ArchiveForm', () => {
         });
         vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
-        render(<ArchiveForm />);
+        render(<ArchiveForm maxFiles={25} />);
 
         await user.upload(
             screen.getByLabelText(/drop files here/i),
@@ -239,7 +275,7 @@ describe('ArchiveForm', () => {
                 .spyOn(HTMLAnchorElement.prototype, 'click')
                 .mockImplementation(() => undefined);
 
-            render(<ArchiveForm />);
+            render(<ArchiveForm maxFiles={25} />);
 
             fireEvent.change(screen.getByLabelText(/drop files here/i), {
                 target: { files: [new File(['secret'], 'secret.txt')] },
